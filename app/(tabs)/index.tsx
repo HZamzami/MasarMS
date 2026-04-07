@@ -38,6 +38,46 @@ export default function HomeScreen() {
           <Ionicons name="chevron-forward" size={20} color="white" />
         </TouchableOpacity>
 
+        {/* Motor tapping test launch card */}
+        <TouchableOpacity
+          className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+          onPress={() => router.push('/tests/motor-tapping')}
+          accessibilityRole="button"
+          accessibilityLabel="Start motor tapping test"
+        >
+          <View className="w-12 h-12 rounded-2xl bg-primary-container items-center justify-center">
+            <Ionicons name="hand-left-outline" size={26} color="#004a5d" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text className="text-on-surface font-bold text-lg">Motor Tapping Test</Text>
+            <Text className="text-on-surface-variant text-sm">
+              10-second motor biomarker capture
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#576065" />
+        </TouchableOpacity>
+
+        {/* Mobility test launch card */}
+        <TouchableOpacity
+          className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+          onPress={() => router.push('/tests/mobility')}
+          accessibilityRole="button"
+          accessibilityLabel="Start mobility test"
+        >
+          <View className="w-12 h-12 rounded-2xl bg-tertiary-container items-center justify-center">
+            <MaterialCommunityIcons name="walk" size={26} color="#005e54" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text className="text-on-surface font-bold text-lg">Mobility & U-Turn Test</Text>
+            <Text className="text-on-surface-variant text-sm">
+              2-minute gait and turn assessment
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#576065" />
+        </TouchableOpacity>
+
         {/* Info card */}
         <View className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
