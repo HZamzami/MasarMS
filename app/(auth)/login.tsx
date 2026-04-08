@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 type Mode = "login" | "signup";
 
@@ -32,7 +32,7 @@ export default function LoginScreen() {
     if (error) {
       setError(error.message);
     } else {
-      router.replace("/(tabs)");
+      router.replace("/");
     }
   }
 
@@ -50,9 +50,9 @@ export default function LoginScreen() {
 
   function handleSubmit() {
     if (mode === "login") {
-      signIn();
+      void signIn();
     } else {
-      signUp();
+      void signUp();
     }
   }
 

@@ -34,9 +34,9 @@ export default function RootLayout() {
     if (!ready) return;
     SplashScreen.hideAsync();
     if (session) {
-      router.replace("/(tabs)");
-    } else {
       router.replace("/");
+    } else {
+      router.replace("/login");
     }
   }, [ready, session]);
 

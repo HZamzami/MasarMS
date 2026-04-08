@@ -18,7 +18,8 @@ import {
   type AccelerometerMeasurement,
   type GyroscopeMeasurement,
 } from 'expo-sensors';
-import { supabase } from '../../lib/supabase';
+import { saveTestResult } from '../../lib/saveTestResult';
+import type { MobilityData } from '../../lib/types';
 
 type TestState = 'PREPARE' | 'ACTIVE' | 'SAVING' | 'SUMMARY';
 
@@ -253,46 +254,19 @@ export default function MobilityTestScreen() {
     setSaveError(null);
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-      if (!user) throw new Error('No authenticated user found.');
-
-      const rawSeries = result.meanResultantAccelerationBySecond.map((value) => Number(value.toFixed(4)));
-
-      const detailedPayload = {
-        user_id: user.id,
-        test_type: 'mobility_u_turn',
-        test_version: '1.0',
-        u_turn_count: result.uTurnCount,
-        average_acceleration: Number(result.averageAcceleration.toFixed(4)),
-        duration_seconds: Math.round(result.durationSeconds),
-        device_platform: Platform.OS,
-        raw_series: rawSeries,
-      };
-
-      const fallbackPayload = {
-        user_id: user.id,
-        test_type: 'mobility_u_turn',
-        test_version: '1.0',
-        total_attempts: result.uTurnCount,
-        correct_matches: Math.round(result.averageAcceleration * 100),
-        duration_seconds: Math.round(result.durationSeconds),
-        device_platform: Platform.OS,
-      };
-
-      const detailedInsert = await supabase.from('observations').insert(detailedPayload);
-      if (detailedInsert.error) {
-        const fallbackInsert = await supabase.from('observations').insert(fallbackPayload);
-        if (fallbackInsert.error) {
-          throw new Error(
-            `${extractErrorMessage(detailedInsert.error)} | ${extractErrorMessage(fallbackInsert.error)}`,
-          );
-        }
-      }
+      await saveTestResult({
+        domain: 'mobility',
+        testType: '2MWT',
+        data: {
+          u_turn_count: result.uTurnCount,
+          average_acceleration: Number(result.averageAcceleration.toFixed(4)),
+          mean_resultant_acceleration_by_second: result.meanResultantAccelerationBySecond.map(
+            (v) => Number(v.toFixed(4)),
+          ),
+          duration_seconds: Math.round(result.durationSeconds),
+          sensor_available: !sensorUnavailable,
+        } satisfies MobilityData,
+      });
 
       if (Platform.OS !== 'web') {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -302,7 +276,7 @@ export default function MobilityTestScreen() {
     } finally {
       setTestState('SUMMARY');
     }
-  }, [buildSummary]);
+  }, [buildSummary, sensorUnavailable]);
 
   useEffect(() => {
     if (testState !== 'PREPARE') return;
@@ -595,7 +569,7 @@ export default function MobilityTestScreen() {
             shadowRadius: 12,
             elevation: 6,
           }}
-          onPress={() => router.replace('/(tabs)')}
+          onPress={() => router.replace('/')}
           accessibilityRole="button"
           accessibilityLabel="Back to dashboard"
         >

@@ -107,7 +107,7 @@ export default function ResultsScreen() {
         <TouchableOpacity
           className="w-full bg-primary rounded-2xl py-4 items-center flex-row justify-center"
           style={{ gap: 8 }}
-          onPress={() => router.replace('/(tabs)')}
+          onPress={() => router.replace('/')}
           accessibilityRole="button"
           accessibilityLabel="Back to home"
         >
