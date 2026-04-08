@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Platform,
   Text,
   TouchableOpacity,
   View,
@@ -10,7 +9,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '../../lib/supabase';
+import { saveTestResult } from '../../lib/saveTestResult';
+import type { EsdmtData } from '../../lib/types';
 
 // ─── Icon set (9 unique MaterialCommunityIcons) ────────────────────────────
 const ICON_NAMES = [
@@ -57,17 +57,23 @@ export default function EsdmtScreen() {
   const [done, setDone] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout>>();
 
+  // Refs mirror state so saveObservation reads final values without stale closure risk
+  const attemptsRef = useRef(0);
+  const correctRef = useRef(0);
+  const timeLeftRef = useRef(90);
+
   // ── Countdown timer ──────────────────────────────────────────────────────
   useEffect(() => {
     if (done) return;
     const id = setInterval(() => {
       setTimeLeft((t) => {
+        const next = t <= 1 ? 0 : t - 1;
+        timeLeftRef.current = next;
         if (t <= 1) {
           clearInterval(id);
           setDone(true);
-          return 0;
         }
-        return t - 1;
+        return next;
       });
     }, 1000);
     return () => clearInterval(id);
@@ -76,26 +82,35 @@ export default function EsdmtScreen() {
   // ── Finish: save + navigate ───────────────────────────────────────────────
   useEffect(() => {
     if (!done) return;
-    saveObservation();
+    void saveObservation();
     router.replace({
       pathname: '/tests/results',
-      params: { attempts: String(attempts), correct: String(correct) },
+      params: { attempts: String(attemptsRef.current), correct: String(correctRef.current) },
     });
-  }, [done]);
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function saveObservation() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from('observations').insert({
-      user_id: user.id,
-      test_type: 'esdmt',
-      test_version: '1.0',
-      total_attempts: attempts,
-      correct_matches: correct,
-      duration_seconds: 90 - timeLeft,
-      device_platform: Platform.OS,
+    const totalAttempts = attemptsRef.current;
+    const correctMatches = correctRef.current;
+    // 90 - timeLeftRef gives actual time used (0 when full test completed)
+    const durationSeconds = 90 - timeLeftRef.current;
+
+    await saveTestResult({
+      domain: 'cognitive',
+      testType: 'eSDMT',
+      data: {
+        // IPS score = raw correct responses in 90s (primary clinical biomarker)
+        ips_score: correctMatches,
+        total_attempts: totalAttempts,
+        correct_matches: correctMatches,
+        errors: totalAttempts - correctMatches,
+        score_pct:
+          totalAttempts > 0
+            ? Math.round((correctMatches / totalAttempts) * 10000) / 100
+            : 0,
+        duration_seconds: durationSeconds,
+        test_version: '1.0',
+      } satisfies EsdmtData,
     });
   }
 
@@ -103,8 +118,8 @@ export default function EsdmtScreen() {
   function handlePress(tappedNumber: number) {
     if (done) return;
     const isCorrect = tappedNumber === key[currentIdx].number;
-    setAttempts((a) => a + 1);
-    if (isCorrect) setCorrect((c) => c + 1);
+    setAttempts((a) => { attemptsRef.current = a + 1; return a + 1; });
+    if (isCorrect) setCorrect((c) => { correctRef.current = c + 1; return c + 1; });
     setFeedback(isCorrect ? 'correct' : 'wrong');
 
     clearTimeout(feedbackTimer.current);

@@ -97,7 +97,7 @@ export default function HomeScreen() {
         <TouchableOpacity
           className="w-full border border-outline-variant rounded-2xl py-3 items-center flex-row justify-center"
           style={{ gap: 8 }}
-          onPress={() => supabase.auth.signOut()}
+          onPress={() => void supabase.auth.signOut()}
           accessibilityRole="button"
           accessibilityLabel="Sign out"
         >

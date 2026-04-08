@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Platform,
   Pressable,
   Text,
   View,
@@ -8,7 +7,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabase';
+import { saveTestResult } from '../../lib/saveTestResult';
+import type { FingerTappingData } from '../../lib/types';
 
 const TEST_DURATION_MS = 10_000;
 const HALF_WINDOW_MS = TEST_DURATION_MS / 2;
@@ -68,11 +68,8 @@ function extractErrorMessage(error: unknown): string {
 
 function formatSaveError(error: unknown): string {
   const message = extractErrorMessage(error);
-  if (
-    message.toLowerCase().includes('motor_observations') &&
-    message.toLowerCase().includes('schema cache')
-  ) {
-    return 'Database table not found. Apply migration 002_motor_observations.sql in Supabase, then retry.';
+  if (message.toLowerCase().includes('schema cache')) {
+    return 'Database table not found. Apply migration 003_unified_schema.sql in Supabase, then retry.';
   }
   return message;
 }
@@ -104,31 +101,20 @@ export default function MotorTappingTaskScreen() {
     const metrics = computeMetrics(taps);
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      await saveTestResult({
+        domain: 'motor',
+        testType: 'FingerTapping',
+        data: {
+          total_taps: metrics.totalTaps,
+          frequency_hz: Number(metrics.frequencyHz.toFixed(4)),
+          fatigue_index: Number(metrics.fatigueIndex.toFixed(4)),
+          dominant_hand: selectedHandRef.current === 'L' ? 'left' : 'right',
+          tap_events: taps.map((tap) => ({ t: tap.timestamp, side: tap.side })),
+          duration_seconds: TEST_DURATION_MS / 1000,
+        } satisfies FingerTappingData,
+      });
 
-      if (userError) throw userError;
-      if (!user) throw new Error('No authenticated user found.');
-
-      const payload = {
-        user_id: user.id,
-        total_taps: metrics.totalTaps,
-        frequency_hz: Number(metrics.frequencyHz.toFixed(4)),
-        fatigue_index: Number(metrics.fatigueIndex.toFixed(4)),
-        tap_events: taps,
-        duration_seconds: TEST_DURATION_MS / 1000,
-        dominant_hand: selectedHandRef.current,
-        device_platform: Platform.OS,
-      };
-
-      const { error: insertError } = await supabase
-        .from('motor_observations')
-        .insert(payload);
-      if (insertError) throw insertError;
-
-      router.replace('/(tabs)');
+      router.replace('/');
     } catch (error) {
       setStatus('error');
       setSaveError(formatSaveError(error));
