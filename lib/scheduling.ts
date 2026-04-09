@@ -15,8 +15,10 @@ export const SCHEDULE_CONFIG: ReadonlyArray<ScheduleConfig> = [
   { testType: 'DailyEMA',            domain: 'mood',          label: 'Daily Check-in',  route: '/tests/daily-checkin',  intervalDays: 1  },
   { testType: 'eSDMT',               domain: 'cognitive',     label: 'Cognitive',        route: '/tests/esdmt',          intervalDays: 7  },
   { testType: 'FingerTapping',       domain: 'motor',         label: 'Motor Tapping',    route: '/tests/motor-tapping',  intervalDays: 7  },
+  { testType: 'PinchDrag',           domain: 'motor',         label: 'Pinch & Drag',     route: '/tests/pinch-drag',     intervalDays: 7  },
   { testType: '2MWT',                domain: 'mobility',      label: 'Mobility',         route: '/tests/mobility',       intervalDays: 14 },
   { testType: 'ContrastSensitivity', domain: 'physiological', label: 'Vision',           route: '/tests/vision',         intervalDays: 14 },
+  { testType: 'MSIS29',              domain: 'mood',          label: 'QoL Survey',       route: '/tests/msis29',         intervalDays: 30 },
 ] as const;
 
 // ─── Schedule computation ─────────────────────────────────────────────────────

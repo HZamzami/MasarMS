@@ -19,7 +19,9 @@ import type {
   DailyEMAData,
   EsdmtData,
   FingerTappingData,
+  MSIS29Data,
   MobilityData,
+  PinchDragData,
   VisionContrastData,
   TestScheduleItem,
   StreakInfo,
@@ -36,9 +38,11 @@ interface DashboardData {
   userHandle: string;
   esdmt: Row<EsdmtData>;
   tapping: Row<FingerTappingData>;
+  pinchDrag: Row<PinchDragData>;
   mobility: Row<MobilityData>;
   vision: Row<VisionContrastData>;
   ema: Row<DailyEMAData>;
+  msis29: Row<MSIS29Data>;
   schedule: TestScheduleItem[];
   streak: StreakInfo;
 }
@@ -416,11 +420,12 @@ function SkeletonCard({ tall }: { tall?: boolean }) {
 // ─── BottomNav ────────────────────────────────────────────────────────────────
 
 function BottomNav({ active }: { active: 'home' | 'trends' | 'history' | 'profile' }) {
+  const router = useRouter();
   const items = [
-    { key: 'home',    icon: 'home',           label: 'Home'    },
-    { key: 'trends',  icon: 'trending-up',    label: 'Trends'  },
-    { key: 'history', icon: 'time-outline',   label: 'History' },
-    { key: 'profile', icon: 'person-outline', label: 'Profile' },
+    { key: 'home',    icon: 'home',           label: 'Home',    route: '/'       },
+    { key: 'trends',  icon: 'trending-up',    label: 'Trends',  route: '/trends' },
+    { key: 'history', icon: 'time-outline',   label: 'History', route: null      },
+    { key: 'profile', icon: 'person-outline', label: 'Profile', route: null      },
   ] as const;
 
   return (
@@ -437,11 +442,13 @@ function BottomNav({ active }: { active: 'home' | 'trends' | 'history' | 'profil
         elevation: 8,
       }}
     >
-      {items.map(({ key, icon, label }) => {
+      {items.map(({ key, icon, label, route }) => {
         const isActive = key === active;
         return (
-          <View
+          <TouchableOpacity
             key={key}
+            onPress={() => route ? router.push(route as never) : undefined}
+            disabled={!route}
             className={`flex-col items-center justify-center py-2 px-4 rounded-2xl ${
               isActive ? 'bg-primary/10' : ''
             }`}
@@ -457,7 +464,7 @@ function BottomNav({ active }: { active: 'home' | 'trends' | 'history' | 'profil
             >
               {label}
             </Text>
-          </View>
+          </TouchableOpacity>
         );
       })}
     </View>
@@ -476,9 +483,11 @@ export default function HomeScreen() {
     userHandle: 'there',
     esdmt: null,
     tapping: null,
+    pinchDrag: null,
     mobility: null,
     vision: null,
     ema: null,
+    msis29: null,
     schedule: [],
     streak: DEFAULT_STREAK,
   });
@@ -499,7 +508,7 @@ export default function HomeScreen() {
           const uid = user.id;
           const handle = user.email?.split('@')[0] ?? 'there';
 
-          const [profileRes, esdmtRes, tappingRes, mobilityRes, visionRes, emaRes, schedule, streak] =
+          const [profileRes, esdmtRes, tappingRes, pinchDragRes, mobilityRes, visionRes, emaRes, msis29Res, schedule, streak] =
             await Promise.all([
               supabase
                 .from('profiles')
@@ -508,9 +517,11 @@ export default function HomeScreen() {
                 .single(),
               latestResult(uid, 'eSDMT'),
               latestResult(uid, 'FingerTapping'),
+              latestResult(uid, 'PinchDrag'),
               latestResult(uid, '2MWT'),
               latestResult(uid, 'ContrastSensitivity'),
               latestResult(uid, 'DailyEMA'),
+              latestResult(uid, 'MSIS29'),
               getTestSchedule(uid),
               getStreak(uid),
             ]);
@@ -530,9 +541,11 @@ export default function HomeScreen() {
               userHandle: handle,
               esdmt: esdmtRes.data as Row<EsdmtData>,
               tapping: tappingRes.data as Row<FingerTappingData>,
+              pinchDrag: pinchDragRes.data as Row<PinchDragData>,
               mobility: mobilityRes.data as Row<MobilityData>,
               vision: visionRes.data as Row<VisionContrastData>,
               ema: emaRes.data as Row<DailyEMAData>,
+              msis29: msis29Res.data as Row<MSIS29Data>,
               schedule,
               streak,
             });
@@ -574,6 +587,9 @@ export default function HomeScreen() {
   const tappingMetric = dash.tapping
     ? (dash.tapping.data as FingerTappingData).frequency_hz.toFixed(1)
     : null;
+  const pinchDragMetric = dash.pinchDrag
+    ? String(Math.round((dash.pinchDrag.data as PinchDragData).accuracy_pct))
+    : null;
   const mobilityMetric = dash.mobility
     ? String((dash.mobility.data as MobilityData).u_turn_count)
     : null;
@@ -583,6 +599,9 @@ export default function HomeScreen() {
           (1 - (dash.vision.data as VisionContrastData).final_contrast_threshold) * 100
         )
       )
+    : null;
+  const msis29Metric = dash.msis29
+    ? String((dash.msis29.data as MSIS29Data).total_score)
     : null;
 
   return (
@@ -635,6 +654,10 @@ export default function HomeScreen() {
               <SkeletonCard />
               <SkeletonCard />
             </View>
+            <View className="flex-row" style={{ gap: 12 }}>
+              <SkeletonCard />
+              <SkeletonCard />
+            </View>
           </View>
         ) : (
           <View style={{ gap: 16 }}>
@@ -664,7 +687,7 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* ── 2×2 Biomarker grid ───────────────────────────────────────── */}
+            {/* ── Biomarker grid ────────────────────────────────────────────── */}
             <View style={{ gap: 12 }}>
               <View className="flex-row" style={{ gap: 12 }}>
                 <BiomarkerCard
@@ -678,7 +701,7 @@ export default function HomeScreen() {
                   onPress={() => router.push('/tests/esdmt')}
                 />
                 <BiomarkerCard
-                  domainLabel="Motor"
+                  domainLabel="Motor · Tap"
                   title="Hand Dexterity"
                   icon={{ type: 'ion', name: 'hand-left-outline' }}
                   metric={tappingMetric}
@@ -690,6 +713,16 @@ export default function HomeScreen() {
               </View>
               <View className="flex-row" style={{ gap: 12 }}>
                 <BiomarkerCard
+                  domainLabel="Motor · Pinch"
+                  title="Fine Control"
+                  icon={{ type: 'ion', name: 'finger-print-outline' }}
+                  metric={pinchDragMetric}
+                  unit="%"
+                  completedToday={dash.pinchDrag !== null && isToday(dash.pinchDrag.created_at)}
+                  scheduleItem={scheduleFor('PinchDrag')}
+                  onPress={() => router.push('/tests/pinch-drag')}
+                />
+                <BiomarkerCard
                   domainLabel="Mobility"
                   title="Gait & Walk"
                   icon={{ type: 'mci', name: 'walk' }}
@@ -699,6 +732,8 @@ export default function HomeScreen() {
                   scheduleItem={scheduleFor('2MWT')}
                   onPress={() => router.push('/tests/mobility')}
                 />
+              </View>
+              <View className="flex-row" style={{ gap: 12 }}>
                 <BiomarkerCard
                   domainLabel="Vision"
                   title="Contrast Test"
@@ -708,6 +743,16 @@ export default function HomeScreen() {
                   completedToday={dash.vision !== null && isToday(dash.vision.created_at)}
                   scheduleItem={scheduleFor('ContrastSensitivity')}
                   onPress={() => router.push('/tests/vision')}
+                />
+                <BiomarkerCard
+                  domainLabel="QoL Survey"
+                  title="MS Impact"
+                  icon={{ type: 'ion', name: 'clipboard-outline' }}
+                  metric={msis29Metric}
+                  unit="/100"
+                  completedToday={dash.msis29 !== null && isToday(dash.msis29.created_at)}
+                  scheduleItem={scheduleFor('MSIS29')}
+                  onPress={() => router.push('/tests/msis29')}
                 />
               </View>
             </View>

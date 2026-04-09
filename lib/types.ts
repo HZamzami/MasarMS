@@ -166,6 +166,39 @@ export interface Badge {
   earnedAt: string | null;
 }
 
+export interface PinchDragData {
+  /** Average error distance in pixels from target centre — lower is more precise */
+  mean_error_px: number;
+  /** Standard deviation of error — measures tremor/variability */
+  error_stddev_px: number;
+  /** Trials completed in the session */
+  trial_count: number;
+  /** Median completion time per trial in ms */
+  median_time_ms: number;
+  /** Number of trials where the drop missed the target entirely */
+  miss_count: number;
+  /** Accuracy 0–100% (successful drops / total trials × 100) */
+  accuracy_pct: number;
+  dominant_hand: 'left' | 'right' | null;
+  test_version: string;
+}
+
+export interface MSIS29Data {
+  /**
+   * Raw item responses, 1–5 each.
+   * items[0]–items[19] = physical subscale (20 items)
+   * items[20]–items[28] = psychological subscale (9 items)
+   */
+  item_responses: number[];
+  /** 0–100, higher = more impacted */
+  physical_subscale: number;
+  /** 0–100, higher = more impacted */
+  psychological_subscale: number;
+  /** Mean of physical + psychological subscales */
+  total_score: number;
+  test_version: string;
+}
+
 // ─── Per-test JSONB data shapes ───────────────────────────────────────────────
 
 export interface DailyEMAData {
