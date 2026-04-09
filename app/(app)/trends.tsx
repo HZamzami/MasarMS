@@ -7,8 +7,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '../../lib/supabase';
@@ -99,8 +98,7 @@ function MiniBarChart({
     );
   }
 
-  const visible = points.slice(-CHART_BARS);
-  const values  = visible.map((p) => p.value);
+  const values  = points.map((p) => p.value);
   const max     = Math.max(...values);
   const min     = Math.min(...values);
   const range   = max - min || 1;
@@ -112,13 +110,13 @@ function MiniBarChart({
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: CHART_HEIGHT, gap: 3 }}>
-      {visible.map((p, i) => {
-        const isLast = i === visible.length - 1;
+      {points.slice(-CHART_BARS).map((p, i, arr) => {
+        const isLast = i === arr.length - 1;
         const barH   = Math.max(6, ((p.value - min) / range) * (CHART_HEIGHT - 8) + 4);
         const color  = isLast
           ? (lastImproving ? '#006b60' : '#a83836')
           : '#006880';
-        const opacity = isLast ? 1 : 0.25 + (i / visible.length) * 0.55;
+        const opacity = isLast ? 1 : 0.25 + (i / arr.length) * 0.55;
 
         return (
           <View
@@ -200,60 +198,6 @@ function TrendCard({
   );
 }
 
-// ─── BottomNav ────────────────────────────────────────────────────────────────
-
-function BottomNav({ active }: { active: 'home' | 'trends' | 'history' | 'profile' }) {
-  const router = useRouter();
-  const items = [
-    { key: 'home',    icon: 'home',           label: 'Home',    route: '/'        },
-    { key: 'trends',  icon: 'trending-up',    label: 'Trends',  route: '/trends'  },
-    { key: 'history', icon: 'time-outline',   label: 'History', route: null       },
-    { key: 'profile', icon: 'person-outline', label: 'Profile', route: null       },
-  ] as const;
-
-  return (
-    <View
-      className="absolute bottom-0 left-0 right-0 flex-row justify-around items-center px-4 pt-3 pb-6 bg-surface-container-lowest"
-      style={{
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(170,179,184,0.2)',
-        shadowColor: '#2b3438',
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 8,
-      }}
-    >
-      {items.map(({ key, icon, label, route }) => {
-        const isActive = key === active;
-        return (
-          <TouchableOpacity
-            key={key}
-            onPress={() => route ? router.push(route as never) : undefined}
-            disabled={!route}
-            className={`flex-col items-center justify-center py-2 px-4 rounded-2xl ${
-              isActive ? 'bg-primary/10' : ''
-            }`}
-          >
-            <Ionicons
-              name={icon as React.ComponentProps<typeof Ionicons>['name']}
-              size={22}
-              color={isActive ? '#006880' : '#aab3b8'}
-            />
-            <Text
-              className="text-xs font-semibold mt-1"
-              style={{ color: isActive ? '#006880' : '#aab3b8' }}
-            >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
 // ─── TrendsScreen ─────────────────────────────────────────────────────────────
 
 export default function TrendsScreen() {
@@ -321,7 +265,7 @@ export default function TrendsScreen() {
     <SafeAreaView className="flex-1 bg-surface">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}
       >
         {/* Header */}
         <View className="mb-8">
@@ -376,8 +320,6 @@ export default function TrendsScreen() {
           </>
         )}
       </ScrollView>
-
-      <BottomNav active="trends" />
     </SafeAreaView>
   );
 }

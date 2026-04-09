@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { CountdownOverlay } from '../../lib/CountdownOverlay';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { FingerTappingData } from '../../lib/types';
 
@@ -43,6 +44,7 @@ export default function MotorTappingTaskScreen() {
   const router = useRouter();
 
   const [remainingMs, setRemainingMs] = useState(TEST_DURATION_MS);
+  const [isCountingDown, setIsCountingDown] = useState(true);
   const [highlighted, setHighlighted] = useState(false);
   const [status, setStatus]           = useState<'running' | 'saving' | 'error'>('running');
   const [saveError, setSaveError]     = useState<string | null>(null);
@@ -84,6 +86,7 @@ export default function MotorTappingTaskScreen() {
   }, [router]);
 
   useEffect(() => {
+    if (isCountingDown) return;
     const step = (now: number) => {
       if (startedAtRef.current === null) startedAtRef.current = now;
       const elapsed   = now - startedAtRef.current;
@@ -104,10 +107,10 @@ export default function MotorTappingTaskScreen() {
     return () => {
       if (frameIdRef.current !== null) cancelAnimationFrame(frameIdRef.current);
     };
-  }, [persistObservation]);
+  }, [persistObservation, isCountingDown]);
 
   const handleTap = useCallback(() => {
-    if (status !== 'running' || isFinishedRef.current) return;
+    if (status !== 'running' || isFinishedRef.current || isCountingDown) return;
     if (startedAtRef.current === null) return;
 
     const tapTimestamp = performance.now() - startedAtRef.current;
@@ -127,6 +130,9 @@ export default function MotorTappingTaskScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      {isCountingDown && (
+        <CountdownOverlay onFinished={() => setIsCountingDown(false)} />
+      )}
       <View className="flex-1 px-6 pb-6">
 
         {/* Header */}

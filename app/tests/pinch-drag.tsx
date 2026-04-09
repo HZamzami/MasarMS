@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { CountdownOverlay } from '../../lib/CountdownOverlay';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { PinchDragData } from '../../lib/types';
 
@@ -29,7 +30,7 @@ interface TrialResult {
   success: boolean;      // landed within TARGET_RADIUS
 }
 
-type ScreenState = 'instructions' | 'running' | 'saving' | 'error' | 'done';
+type ScreenState = 'instructions' | 'countdown' | 'running' | 'saving' | 'error' | 'done';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -334,6 +335,41 @@ export default function PinchDragScreen() {
         <ResultCard trials={trials} onDone={() => router.replace('/')} />
       )}
 
+      {/* Countdown */}
+      {screenState === 'countdown' && (
+        <View className="flex-1">
+          {/* We render the running UI behind the countdown */}
+          <View className="flex-1 opacity-40">
+            {/* Target ring */}
+            <View
+              style={{
+                position: 'absolute',
+                left: width / 2 - TARGET_RADIUS,
+                top: height / 4 - TARGET_RADIUS,
+                width: TARGET_RADIUS * 2,
+                height: TARGET_RADIUS * 2,
+                borderRadius: TARGET_RADIUS,
+                borderWidth: 2.5,
+                borderColor: '#006880',
+              }}
+            />
+            {/* Draggable token */}
+            <View
+              style={{
+                position: 'absolute',
+                left: tokenStartX,
+                top: tokenStartY,
+                width: TOKEN_SIZE,
+                height: TOKEN_SIZE,
+                borderRadius: TOKEN_SIZE / 2,
+                backgroundColor: '#006880',
+              }}
+            />
+          </View>
+          <CountdownOverlay onFinished={() => setScreenState('running')} />
+        </View>
+      )}
+
       {/* Instructions */}
       {screenState === 'instructions' && (
         <View className="flex-1 px-8 justify-center">
@@ -366,7 +402,7 @@ export default function PinchDragScreen() {
             ))}
           </View>
           <TouchableOpacity
-            onPress={() => setScreenState('running')}
+            onPress={() => setScreenState('countdown')}
             className="w-full bg-primary rounded-full py-5 items-center"
           >
             <Text className="text-on-primary font-bold text-lg">Start Test</Text>

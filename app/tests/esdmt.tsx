@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
 import { saveTestResult } from '../../lib/saveTestResult';
+import { CountdownOverlay } from '../../lib/CountdownOverlay';
 import type { EsdmtData } from '../../lib/types';
 
 // ─── Icon set (9 unique MaterialCommunityIcons) ────────────────────────────
@@ -50,6 +51,7 @@ export default function EsdmtScreen() {
 
   const key = useRef<KeyEntry[]>(generateKey()).current;
   const [currentIdx, setCurrentIdx] = useState(() => Math.floor(Math.random() * 9));
+  const [isCountingDown, setIsCountingDown] = useState(true);
   const [timeLeft, setTimeLeft] = useState(90);
   const [attempts, setAttempts] = useState(0);
   const [correct, setCorrect] = useState(0);
@@ -64,7 +66,7 @@ export default function EsdmtScreen() {
 
   // ── Countdown timer ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (done) return;
+    if (done || isCountingDown) return;
     const id = setInterval(() => {
       setTimeLeft((t) => {
         const next = t <= 1 ? 0 : t - 1;
@@ -77,7 +79,7 @@ export default function EsdmtScreen() {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [done]);
+  }, [done, isCountingDown]);
 
   // ── Finish: save + navigate ───────────────────────────────────────────────
   useEffect(() => {
@@ -116,7 +118,7 @@ export default function EsdmtScreen() {
 
   // ── Button press ─────────────────────────────────────────────────────────
   function handlePress(tappedNumber: number) {
-    if (done) return;
+    if (done || isCountingDown) return;
     const isCorrect = tappedNumber === key[currentIdx].number;
     setAttempts((a) => { attemptsRef.current = a + 1; return a + 1; });
     if (isCorrect) setCorrect((c) => { correctRef.current = c + 1; return c + 1; });
@@ -145,6 +147,9 @@ export default function EsdmtScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      {isCountingDown && (
+        <CountdownOverlay onFinished={() => setIsCountingDown(false)} />
+      )}
       {/* Top bar */}
       <View className="flex-row justify-between items-center px-6 py-4">
         <TouchableOpacity onPress={() => router.back()} hitSlop={20}>

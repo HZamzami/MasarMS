@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { CountdownOverlay } from '../../lib/CountdownOverlay';
 import {
   Accelerometer,
   Gyroscope,
@@ -32,7 +33,6 @@ type MobilitySummary = {
 
 type SubscriptionHandle = { remove: () => void } | null;
 
-const PREPARE_SECONDS = 5;
 const ACTIVE_DURATION_MS = 120_000;
 const SENSOR_UPDATE_INTERVAL_MS = 100;
 const UTURN_RAD_THRESHOLD = Math.PI;
@@ -66,7 +66,6 @@ export default function MobilityTestScreen() {
   const router = useRouter();
 
   const [testState, setTestState] = useState<TestState>('PREPARE');
-  const [prepareSeconds, setPrepareSeconds] = useState(PREPARE_SECONDS);
   const [activeRemainingMs, setActiveRemainingMs] = useState(ACTIVE_DURATION_MS);
   const [summary, setSummary] = useState<MobilitySummary | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -279,24 +278,6 @@ export default function MobilityTestScreen() {
   }, [buildSummary, sensorUnavailable]);
 
   useEffect(() => {
-    if (testState !== 'PREPARE') return;
-
-    setPrepareSeconds(PREPARE_SECONDS);
-    const interval = setInterval(() => {
-      setPrepareSeconds((previous) => {
-        if (previous <= 1) {
-          clearInterval(interval);
-          setTestState('ACTIVE');
-          return 0;
-        }
-        return previous - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [testState]);
-
-  useEffect(() => {
     if (testState !== 'ACTIVE') return;
 
     setActiveRemainingMs(ACTIVE_DURATION_MS);
@@ -388,20 +369,6 @@ export default function MobilityTestScreen() {
   const activeTimerLabel = useMemo(
     () => formatMmSs(activeRemainingMs),
     [activeRemainingMs],
-  );
-
-  const renderPrepare = () => (
-    <View className="flex-1 justify-center items-center px-6">
-      <Text className="text-sm uppercase tracking-[3px] text-on-surface-variant mb-3">
-        Starting In
-      </Text>
-      <Text className="text-[110px] leading-[112px] font-extrabold text-primary">
-        {prepareSeconds}
-      </Text>
-      <Text className="mt-4 text-center text-lg text-on-surface-variant">
-        Get ready to start walking for 2 minutes.
-      </Text>
-    </View>
   );
 
   const renderActive = () => (
@@ -605,7 +572,14 @@ export default function MobilityTestScreen() {
         )}
       </View>
 
-      {testState === 'PREPARE' ? renderPrepare() : null}
+      {testState === 'PREPARE' && (
+        <View className="flex-1">
+          <View className="flex-1 opacity-40">
+            {renderActive()}
+          </View>
+          <CountdownOverlay onFinished={() => setTestState('ACTIVE')} />
+        </View>
+      )}
       {testState === 'ACTIVE' ? renderActive() : null}
       {testState === 'SAVING' ? renderSaving() : null}
       {testState === 'SUMMARY' ? renderSummary() : null}

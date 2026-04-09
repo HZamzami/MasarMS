@@ -127,6 +127,7 @@ export interface TestScheduleItem {
   route: string;
   /** Target frequency in days for the current phase */
   intervalDays: number;
+  frequencyLabel: 'Daily' | 'Weekly' | 'Biweekly' | 'Monthly';
   lastCompletedAt: string | null;
   /** Negative value means overdue */
   daysUntilDue: number;

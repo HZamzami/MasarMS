@@ -12,9 +12,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '../../lib/supabase';
 import { getTestSchedule } from '../../lib/scheduling';
 import { getStreak } from '../../lib/gamification';
-import { detectDecline } from '../../lib/decline';
 import type {
-  DailyEMAData,
   EsdmtData,
   FingerTappingData,
   MSIS29Data,
@@ -23,7 +21,7 @@ import type {
   VisionContrastData,
   TestScheduleItem,
   StreakInfo,
-  DeclineReport,
+  DailyEMAData,
 } from '../../lib/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -33,28 +31,11 @@ type Row<T> = { data: T; created_at: string } | null;
 interface DashboardData {
   daysElapsed: number;
   msPhenotype: string | null;
-  esdmt: Row<EsdmtData>;
-  tapping: Row<FingerTappingData>;
-  pinchDrag: Row<PinchDragData>;
-  mobility: Row<MobilityData>;
-  vision: Row<VisionContrastData>;
-  ema: Row<DailyEMAData>;
-  msis29: Row<MSIS29Data>;
   schedule: TestScheduleItem[];
   streak: StreakInfo;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function isToday(iso: string): boolean {
-  const d = new Date(iso);
-  const n = new Date();
-  return (
-    d.getDate() === n.getDate() &&
-    d.getMonth() === n.getMonth() &&
-    d.getFullYear() === n.getFullYear()
-  );
-}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -69,20 +50,9 @@ function todayLabel(): string {
   });
 }
 
-async function latestResult(uid: string, testType: string) {
-  return supabase
-    .from('test_results')
-    .select('data, created_at')
-    .eq('user_id', uid)
-    .eq('test_type', testType)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-}
-
 const DEFAULT_STREAK: StreakInfo = { currentStreak: 0, longestStreak: 0, lastActiveDateKey: null };
 
-// ─── PhaseHeader ─────────────────────────────────────────────────────────────
+// ─── Components ──────────────────────────────────────────────────────────────
 
 function PhaseHeader({ daysElapsed }: { daysElapsed: number }) {
   const isBaseline = daysElapsed < 84;
@@ -91,76 +61,58 @@ function PhaseHeader({ daysElapsed }: { daysElapsed: number }) {
   const progress = isBaseline ? Math.min(daysElapsed / totalDays, 1) : 1;
 
   return (
-    <View className="bg-surface-container-lowest rounded-3xl p-6 mb-4 shadow-sm">
+    <View className="bg-surface-container-lowest rounded-3xl p-6 mb-8 shadow-sm">
       <View className="flex-row justify-between items-center mb-4">
         <View>
-          <Text className="text-sm font-bold text-primary uppercase tracking-wider">
-            {isBaseline ? 'Baseline Phase' : 'Longitudinal Monitoring'}
+          <Text className="text-xs font-bold text-primary uppercase tracking-widest mb-1">
+            {isBaseline ? 'Induction Phase' : 'Longitudinal Monitoring'}
           </Text>
-          <Text className="text-xl font-extrabold text-on-surface">
+          <Text className="text-2xl font-black text-on-surface">
             {isBaseline ? `Week ${weekNum} of 12` : 'Steady State'}
           </Text>
         </View>
-        <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center">
+        <View className="w-12 h-12 rounded-2xl bg-primary/10 items-center justify-center">
           <Ionicons name={isBaseline ? 'analytics' : 'shield-checkmark'} size={24} color="#006880" />
         </View>
       </View>
       
       {isBaseline && (
         <>
-          <View className="h-2 bg-surface-container-high rounded-full overflow-hidden mb-2">
+          <View className="h-2.5 bg-surface-container-high rounded-full overflow-hidden mb-3">
             <View 
               className="h-full bg-primary" 
               style={{ width: `${progress * 100}%` }} 
             />
           </View>
-          <Text className="text-xs text-on-surface-variant font-medium">
-            {84 - daysElapsed} days remaining to establish your digital twin
-          </Text>
+          <View className="flex-row justify-between items-center">
+            <Text className="text-[11px] text-on-surface-variant font-bold uppercase tracking-tight">
+              {84 - daysElapsed} days remaining
+            </Text>
+            <Text className="text-[11px] text-primary font-black uppercase tracking-tight">
+              Establishing Baseline
+            </Text>
+          </View>
         </>
       )}
     </View>
   );
 }
 
-// ─── TaskCard ────────────────────────────────────────────────────────────────
-
-function TaskCard({ item, onPress }: { item: TestScheduleItem; onPress: () => void }) {
+function TaskCard({ item, onPress, compact = false }: { item: TestScheduleItem; onPress: () => void, compact?: boolean }) {
   const isLocked = item.status === 'upcoming' || item.status === 'completed';
   
   const getIcon = () => {
+    const size = compact ? 20 : 22;
     switch (item.testType) {
-      case 'DailyEMA': return <Ionicons name="sunny-outline" size={22} color="#006880" />;
-      case 'eSDMT': return <MaterialCommunityIcons name="brain" size={22} color="#006880" />;
-      case 'FingerTapping': return <Ionicons name="hand-left-outline" size={22} color="#006880" />;
-      case 'PinchDrag': return <Ionicons name="finger-print-outline" size={22} color="#006880" />;
-      case '2MWT': return <MaterialCommunityIcons name="walk" size={22} color="#006880" />;
-      case 'ContrastSensitivity': return <Ionicons name="eye-outline" size={22} color="#006880" />;
-      case 'MSIS29': return <Ionicons name="clipboard-outline" size={22} color="#006880" />;
-      default: return <Ionicons name="flask-outline" size={22} color="#006880" />;
+      case 'DailyEMA': return <Ionicons name="sunny-outline" size={size} color="#006880" />;
+      case 'eSDMT': return <MaterialCommunityIcons name="brain" size={size} color="#006880" />;
+      case 'FingerTapping': return <Ionicons name="hand-left-outline" size={size} color="#006880" />;
+      case 'PinchDrag': return <Ionicons name="finger-print-outline" size={size} color="#006880" />;
+      case '2MWT': return <MaterialCommunityIcons name="walk" size={size} color="#006880" />;
+      case 'ContrastSensitivity': return <Ionicons name="eye-outline" size={size} color="#006880" />;
+      case 'MSIS29': return <Ionicons name="clipboard-outline" size={size} color="#006880" />;
+      default: return <Ionicons name="flask-outline" size={size} color="#006880" />;
     }
-  };
-
-  const getStatusBadge = () => {
-    if (item.status === 'overdue') {
-      return (
-        <View className="bg-error-container px-2 py-0.5 rounded-md">
-          <Text className="text-[10px] font-bold text-error uppercase">Overdue</Text>
-        </View>
-      );
-    }
-    if (item.status === 'completed' || item.status === 'upcoming') {
-      return (
-        <View className="bg-surface-container-high px-2 py-0.5 rounded-md">
-          <Text className="text-[10px] font-bold text-on-surface-variant uppercase">Locked</Text>
-        </View>
-      );
-    }
-    return (
-      <View className="bg-primary/10 px-2 py-0.5 rounded-md">
-        <Text className="text-[10px] font-bold text-primary uppercase">Due</Text>
-      </View>
-    );
   };
 
   return (
@@ -168,34 +120,60 @@ function TaskCard({ item, onPress }: { item: TestScheduleItem; onPress: () => vo
       onPress={onPress}
       disabled={isLocked}
       className={`flex-row items-center p-4 rounded-2xl mb-3 ${
-        isLocked ? 'bg-surface-container-lowest opacity-60' : 'bg-surface-container-low shadow-sm'
+        isLocked ? 'bg-surface-container-lowest opacity-50' : 'bg-surface-container-low border border-outline-variant/30 shadow-sm'
       }`}
-      style={!isLocked ? { borderLeftWidth: 4, borderLeftColor: item.status === 'overdue' ? '#ba1a1a' : '#006880' } : {}}
     >
-      <View className="w-12 h-12 rounded-xl bg-surface-container-lowest items-center justify-center mr-4">
+      <View className={`rounded-xl items-center justify-center mr-4 ${compact ? 'w-10 h-10' : 'w-12 h-12 bg-surface-container-lowest'}`}>
         {getIcon()}
       </View>
       
       <View className="flex-1">
-        <View className="flex-row items-center justify-between mb-0.5">
-          <Text className={`font-bold ${isLocked ? 'text-on-surface-variant' : 'text-on-surface'}`}>
+        <View className="flex-row items-center justify-between">
+          <Text className={`font-bold ${isLocked ? 'text-on-surface-variant' : 'text-on-surface'} ${compact ? 'text-sm' : 'text-base'}`}>
             {item.label}
           </Text>
-          {getStatusBadge()}
+          {item.status === 'overdue' && (
+            <Text className="text-[10px] font-black text-error uppercase tracking-tighter">Overdue</Text>
+          )}
         </View>
-        <Text className="text-xs text-on-surface-variant">
+        <Text className="text-[11px] text-on-surface-variant font-medium mt-0.5">
           {item.status === 'upcoming' 
-            ? `Next: ${new Date(item.nextAvailableAt).toLocaleDateString()}` 
+            ? `Available ${new Date(item.nextAvailableAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` 
             : item.status === 'completed'
-            ? 'Completed for today'
+            ? 'Completed for this interval'
             : item.domain.charAt(0).toUpperCase() + item.domain.slice(1)}
         </Text>
       </View>
 
       {!isLocked && (
-        <Ionicons name="chevron-forward" size={20} color="#aab3b8" />
+        <Ionicons name="chevron-forward" size={18} color="#aab3b8" />
+      )}
+      {item.status === 'completed' && (
+        <Ionicons name="checkmark-circle" size={20} color="#006b60" />
       )}
     </TouchableOpacity>
+  );
+}
+
+function FrequencySection({ title, items, daysElapsed, router }: { title: string, items: TestScheduleItem[], daysElapsed: number, router: any }) {
+  if (items.length === 0) return null;
+  
+  const isBaseline = daysElapsed < 84;
+  
+  return (
+    <View className="mb-8">
+      <View className="flex-row items-baseline justify-between mb-4 px-1">
+        <Text className="text-sm font-black text-on-surface uppercase tracking-widest">{title}</Text>
+        {isBaseline && title !== 'Daily Protocol' && (
+          <View className="bg-primary/5 px-2 py-0.5 rounded-md">
+            <Text className="text-[9px] font-bold text-primary uppercase">Induction: 3x/week</Text>
+          </View>
+        )}
+      </View>
+      {items.map(item => (
+        <TaskCard key={item.testType} item={item} onPress={() => router.push(item.route as never)} />
+      ))}
+    </View>
   );
 }
 
@@ -207,13 +185,6 @@ export default function HomeScreen() {
   const [dash, setDash] = useState<DashboardData>({
     daysElapsed: 0,
     msPhenotype: null,
-    esdmt: null,
-    tapping: null,
-    pinchDrag: null,
-    mobility: null,
-    vision: null,
-    ema: null,
-    msis29: null,
     schedule: [],
     streak: DEFAULT_STREAK,
   });
@@ -229,19 +200,11 @@ export default function HomeScreen() {
           if (!user || !active) return;
 
           const uid = user.id;
-          const [profileRes, esdmtRes, tappingRes, pinchDragRes, mobilityRes, visionRes, emaRes, msis29Res, schedule, streak] =
-            await Promise.all([
-              supabase.from('profiles').select('created_at, ms_phenotype').eq('id', uid).single(),
-              latestResult(uid, 'eSDMT'),
-              latestResult(uid, 'FingerTapping'),
-              latestResult(uid, 'PinchDrag'),
-              latestResult(uid, '2MWT'),
-              latestResult(uid, 'ContrastSensitivity'),
-              latestResult(uid, 'DailyEMA'),
-              latestResult(uid, 'MSIS29'),
-              getTestSchedule(uid),
-              getStreak(uid),
-            ]);
+          const [profileRes, schedule, streak] = await Promise.all([
+            supabase.from('profiles').select('created_at, ms_phenotype').eq('id', uid).single(),
+            getTestSchedule(uid),
+            getStreak(uid),
+          ]);
 
           const enrolledAt = profileRes.data?.created_at ? new Date(profileRes.data.created_at).getTime() : Date.now();
           const daysElapsed = Math.max(0, Math.floor((Date.now() - enrolledAt) / 86_400_000));
@@ -250,13 +213,6 @@ export default function HomeScreen() {
             setDash({
               daysElapsed,
               msPhenotype: profileRes.data?.ms_phenotype ?? null,
-              esdmt: esdmtRes.data as Row<EsdmtData>,
-              tapping: tappingRes.data as Row<FingerTappingData>,
-              pinchDrag: pinchDragRes.data as Row<PinchDragData>,
-              mobility: mobilityRes.data as Row<MobilityData>,
-              vision: visionRes.data as Row<VisionContrastData>,
-              ema: emaRes.data as Row<DailyEMAData>,
-              msis29: msis29Res.data as Row<MSIS29Data>,
               schedule,
               streak,
             });
@@ -272,98 +228,84 @@ export default function HomeScreen() {
   );
 
   const dueTasks = dash.schedule.filter(s => s.status === 'due' || s.status === 'overdue');
-  const otherTasks = dash.schedule.filter(s => s.status === 'upcoming' || s.status === 'completed');
+  
+  const dailyTasks = dash.schedule.filter(s => s.frequencyLabel === 'Daily');
+  const weeklyTasks = dash.schedule.filter(s => s.frequencyLabel === 'Weekly');
+  const biweeklyTasks = dash.schedule.filter(s => s.frequencyLabel === 'Biweekly');
+  const monthlyTasks = dash.schedule.filter(s => s.frequencyLabel === 'Monthly');
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View className="flex-row items-center justify-between mb-8">
           <View>
-            <Text className="text-2xl font-extrabold text-on-surface">{greeting()}</Text>
-            <Text className="text-sm text-on-surface-variant mt-0.5">{todayLabel()}</Text>
+            <Text className="text-2xl font-black text-on-surface tracking-tight">{greeting()}</Text>
+            <Text className="text-sm text-on-surface-variant font-bold mt-0.5">{todayLabel()}</Text>
           </View>
-          <View className="flex-row items-center" style={{ gap: 8 }}>
+          <View className="flex-row items-center" style={{ gap: 10 }}>
             {dash.streak.currentStreak > 1 && (
               <View className="bg-tertiary-container px-3 py-1.5 rounded-full flex-row items-center" style={{ gap: 6 }}>
                 <Text style={{ fontSize: 14 }}>🔥</Text>
-                <Text className="text-xs font-bold text-on-surface-variant">{dash.streak.currentStreak}d streak</Text>
+                <Text className="text-xs font-black text-on-surface-variant">{dash.streak.currentStreak}</Text>
               </View>
             )}
-            <View className="w-11 h-11 rounded-full bg-primary-container items-center justify-center">
+            <TouchableOpacity 
+              className="w-11 h-11 rounded-2xl bg-primary-container items-center justify-center border border-primary/10"
+              onPress={() => router.push('/profile')}
+            >
               <Ionicons name="person" size={20} color="#006880" />
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
         {loading ? (
-          <View className="opacity-20"><PhaseHeader daysElapsed={0} /></View>
+          <View className="flex-1 items-center justify-center py-20">
+            <Text className="text-on-surface-variant font-bold animate-pulse">Syncing Protocol...</Text>
+          </View>
         ) : (
           <>
             <PhaseHeader daysElapsed={dash.daysElapsed} />
 
-            {/* ── Active Tasks ────────────────────────────────────────────── */}
-            <View className="mt-4">
-              <View className="flex-row items-center justify-between mb-4 px-1">
-                <Text className="text-lg font-extrabold text-on-surface">Your Tasks</Text>
-                <View className="bg-primary/10 px-3 py-1 rounded-full">
-                  <Text className="text-xs font-bold text-primary">{dueTasks.length} pending</Text>
+            {/* ── Action Required ─────────────────────────────────────────── */}
+            {dueTasks.length > 0 && (
+              <View className="mb-10">
+                <View className="flex-row items-center justify-between mb-4 px-1">
+                  <Text className="text-lg font-black text-on-surface tracking-tight">Action Required</Text>
+                  <View className="bg-error-container px-2.5 py-1 rounded-lg">
+                    <Text className="text-[10px] font-black text-error uppercase">{dueTasks.length} pending</Text>
+                  </View>
                 </View>
-              </View>
-
-              {dueTasks.length > 0 ? (
-                dueTasks.map(item => (
-                  <TaskCard 
-                    key={item.testType} 
-                    item={item} 
-                    onPress={() => router.push(item.route as never)} 
-                  />
-                ))
-              ) : (
-                <View className="bg-surface-container-lowest rounded-3xl p-8 items-center justify-center border border-dashed border-outline-variant">
-                  <Ionicons name="checkmark-done-circle" size={48} color="#006b60" />
-                  <Text className="text-on-surface font-bold mt-4 text-center">All caught up!</Text>
-                  <Text className="text-on-surface-variant text-xs mt-1 text-center">Check back later for your next scheduled tests.</Text>
-                </View>
-              )}
-            </View>
-
-            {/* ── Upcoming ────────────────────────────────────────────────── */}
-            {otherTasks.length > 0 && (
-              <View className="mt-8">
-                <Text className="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-4 px-1">
-                  Completed & Upcoming
-                </Text>
-                {otherTasks.map(item => (
-                  <TaskCard 
-                    key={item.testType} 
-                    item={item} 
-                    onPress={() => {}} 
-                  />
+                {dueTasks.map(item => (
+                  <TaskCard key={`due-${item.testType}`} item={item} onPress={() => router.push(item.route as never)} />
                 ))}
               </View>
             )}
 
-            {/* ── Sign out ──────────────────────────────────────────────────── */}
-            <TouchableOpacity
-              onPress={() => void supabase.auth.signOut()}
-              className="items-center py-8"
-            >
-              <Text className="text-sm text-on-surface-variant font-medium">Sign Out</Text>
-            </TouchableOpacity>
+            {/* ── Protocol Schedule ───────────────────────────────────────── */}
+            <Text className="text-xl font-black text-on-surface tracking-tight mb-6 px-1">Protocol Schedule</Text>
+
+            <FrequencySection title="Daily Protocol" items={dailyTasks} daysElapsed={dash.daysElapsed} router={router} />
+            <FrequencySection title="Weekly Active Tests" items={weeklyTasks} daysElapsed={dash.daysElapsed} router={router} />
+            <FrequencySection title="Biweekly Assessments" items={biweeklyTasks} daysElapsed={dash.daysElapsed} router={router} />
+            <FrequencySection title="Monthly Review" items={monthlyTasks} daysElapsed={dash.daysElapsed} router={router} />
+
+            {/* ── Footer ──────────────────────────────────────────────────── */}
+            <View className="mt-8 pt-8 border-t border-outline-variant/30">
+              <TouchableOpacity
+                onPress={() => void supabase.auth.signOut()}
+                className="flex-row items-center justify-center py-4 rounded-2xl bg-surface-container-high"
+              >
+                <Ionicons name="log-out-outline" size={18} color="#737c80" />
+                <Text className="text-sm text-on-surface-variant font-bold ml-2">Sign Out</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
       </ScrollView>
-
-      {/* ── Bottom Nav Placeholder ───────────────────────────────────── */}
-      <View className="absolute bottom-0 left-0 right-0 h-20 bg-surface/80 items-center justify-center border-t border-outline-variant">
-         <Text className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">
-           MasarMS Clinical Suite
-         </Text>
-      </View>
     </SafeAreaView>
   );
 }
