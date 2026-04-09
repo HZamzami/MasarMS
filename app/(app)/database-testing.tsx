@@ -52,8 +52,6 @@ const DATA_SOURCES = [
   { table: 'profiles', title: 'About You' },
   { table: 'test_results', title: 'Your Test History' },
   { table: 'passive_events', title: 'Background Data' },
-  { table: 'observations', title: 'Old Observation Data' },
-  { table: 'motor_observations', title: 'Old Motor Data' },
 ] as const;
 
 function getErrorText(error: unknown) {
@@ -480,6 +478,146 @@ export default function DatabaseTestingScreen() {
               .slice(0, 3)
             : [];
 
+          if (sourceMeta.table === 'test_results') {
+            if (sourceResult?.error) {
+              return (
+                <View key={sourceMeta.table} className="bg-surface-container-low rounded-2xl p-4 mb-3">
+                  <Text className="text-on-surface font-bold text-base">Test Results</Text>
+                  <Text className="text-error text-xs mt-2">
+                    I could not read this part right now: {sourceResult.error}
+                  </Text>
+                </View>
+              );
+            }
+
+            if (testHistoryGroups.length === 0) {
+              return (
+                <View key={sourceMeta.table} className="bg-surface-container-low rounded-2xl p-4 mb-3">
+                  <Text className="text-on-surface font-bold text-base">Test Results</Text>
+                  <Text className="text-on-surface-variant text-xs mt-1">
+                    No saved test runs yet.
+                  </Text>
+                </View>
+              );
+            }
+
+            return (
+              <View key={sourceMeta.table} className="mb-3" style={{ gap: 8 }}>
+                {testHistoryGroups.map((group) => (
+                  <View key={`${sourceMeta.table}-${group.testType}`} className="bg-surface-container-low rounded-2xl p-4">
+                    <Text className="text-on-surface font-bold text-base">
+                      {simpleLabel(group.testType)}
+                    </Text>
+
+                    <View className="mt-2" style={{ gap: 8 }}>
+                      {group.runs.map((run, runIndex) => (
+                        (() => {
+                          const isFinger = isFingerTappingTest(group.testType);
+                          const fingerMetrics = isFinger ? getFingerTappingMetrics(run) : null;
+                          const genericSummary = !isFinger ? buildGeneralRunSummary(group.testType, run) : null;
+
+                          const titleText = isFinger
+                            ? `Finger Tapping Run ${runIndex + 1}`
+                            : `Run ${runIndex + 1}`;
+                          const dateLabel = isFinger
+                            ? fingerMetrics?.dateLabel ?? '--'
+                            : genericSummary?.dateLabel ?? '--';
+
+                          const mainLabel = isFinger
+                            ? 'Total Taps'
+                            : genericSummary?.mainMetric.label ?? 'Result';
+                          const mainValue = isFinger
+                            ? String(fingerMetrics?.totalTaps ?? 0)
+                            : genericSummary?.mainMetric.valueText ?? '--';
+
+                          const secondaryCards = isFinger
+                            ? [
+                              {
+                                label: 'Frequency',
+                                value: `${(fingerMetrics?.frequencyHz ?? 0).toFixed(2)} Hz`,
+                              },
+                              {
+                                label: 'Fatigue Index',
+                                value: fingerMetrics?.fatigueIndex === null || fingerMetrics?.fatigueIndex === undefined
+                                  ? '--'
+                                  : fingerMetrics.fatigueIndex.toFixed(2),
+                              },
+                            ]
+                            : [
+                              {
+                                label: genericSummary?.secondaryMetrics[0]?.label ?? 'Status',
+                                value: genericSummary?.secondaryMetrics[0]?.valueText ?? '--',
+                              },
+                              {
+                                label: genericSummary?.secondaryMetrics[1]?.label ?? 'Detail',
+                                value: genericSummary?.secondaryMetrics[1]?.valueText ?? '--',
+                              },
+                            ];
+
+                          return (
+                            <View
+                              key={`${group.testType}-run-${runIndex}`}
+                              className="bg-surface-container-lowest rounded-[24px] p-4"
+                              style={{
+                                shadowColor: '#2b3438',
+                                shadowOpacity: 0.05,
+                                shadowRadius: 20,
+                                elevation: 4,
+                              }}
+                            >
+                              <View className="flex-row items-center justify-between mb-3">
+                                <Text className="text-primary text-[11px] uppercase tracking-[1.2px] font-bold">
+                                  {titleText}
+                                </Text>
+                                <Text className="text-on-surface-variant text-xs font-semibold">
+                                  {dateLabel}
+                                </Text>
+                              </View>
+
+                              <View className="bg-surface-container-low rounded-2xl px-4 py-3 mb-3">
+                                <Text className="text-on-surface-variant text-xs font-semibold">
+                                  {mainLabel}
+                                </Text>
+                                <Text className="text-on-surface text-[48px] leading-[50px] font-extrabold mt-1">
+                                  {mainValue}
+                                </Text>
+                              </View>
+
+                              <View className="flex-row" style={{ gap: 8 }}>
+                                {secondaryCards.map((card, cardIndex) => (
+                                  <View
+                                    key={`${group.testType}-run-${runIndex}-mini-${cardIndex}`}
+                                    className="flex-1 bg-surface-container-low rounded-xl p-3"
+                                  >
+                                    <Text className="text-on-surface-variant text-[11px] uppercase tracking-[1px] font-bold">
+                                      {card.label}
+                                    </Text>
+                                    <Text className="text-on-surface text-base font-bold mt-1">
+                                      {card.value}
+                                    </Text>
+                                  </View>
+                                ))}
+                              </View>
+
+                              <View className="mt-3">
+                                <View className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                                  <View
+                                    className="h-full bg-primary rounded-full"
+                                    style={{ width: '100%' }}
+                                  />
+                                </View>
+                              </View>
+                            </View>
+                          );
+                        })()
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            );
+          }
+
           return (
             <View key={sourceMeta.table} className="bg-surface-container-low rounded-2xl p-4 mb-3">
               <Text className="text-on-surface font-bold text-base">{sourceMeta.title}</Text>
@@ -490,129 +628,7 @@ export default function DatabaseTestingScreen() {
                 </Text>
               ) : (
                 <>
-                  <Text className="text-on-surface-variant text-xs mt-1">
-                    I found {rowCount} saved item{rowCount === 1 ? '' : 's'} here.
-                  </Text>
-
-                  {sourceMeta.table === 'test_results' && testHistoryGroups.length > 0 ? (
-                    <View className="mt-2" style={{ gap: 8 }}>
-                      {testHistoryGroups.map((group) => {
-                        return (
-                          <View key={group.testType} className="bg-surface-container-lowest rounded-xl p-3">
-                            <Text className="text-on-surface text-sm font-bold">
-                              {simpleLabel(group.testType)}
-                            </Text>
-
-                            <View className="mt-2" style={{ gap: 8 }}>
-                              {group.runs.map((run, runIndex) => (
-                                (() => {
-                                  const isFinger = isFingerTappingTest(group.testType);
-                                  const fingerMetrics = isFinger ? getFingerTappingMetrics(run) : null;
-                                  const genericSummary = !isFinger ? buildGeneralRunSummary(group.testType, run) : null;
-
-                                  const titleText = isFinger
-                                    ? `Finger Tapping Run ${runIndex + 1}`
-                                    : `Run ${runIndex + 1}`;
-                                  const dateLabel = isFinger
-                                    ? fingerMetrics?.dateLabel ?? '--'
-                                    : genericSummary?.dateLabel ?? '--';
-
-                                  const mainLabel = isFinger
-                                    ? 'Total Taps'
-                                    : genericSummary?.mainMetric.label ?? 'Result';
-                                  const mainValue = isFinger
-                                    ? String(fingerMetrics?.totalTaps ?? 0)
-                                    : genericSummary?.mainMetric.valueText ?? '--';
-
-                                  const secondaryCards = isFinger
-                                    ? [
-                                      {
-                                        label: 'Frequency',
-                                        value: `${(fingerMetrics?.frequencyHz ?? 0).toFixed(2)} Hz`,
-                                      },
-                                      {
-                                        label: 'Fatigue Index',
-                                        value: fingerMetrics?.fatigueIndex === null || fingerMetrics?.fatigueIndex === undefined
-                                          ? '--'
-                                          : fingerMetrics.fatigueIndex.toFixed(2),
-                                      },
-                                    ]
-                                    : [
-                                      {
-                                        label: genericSummary?.secondaryMetrics[0]?.label ?? 'Status',
-                                        value: genericSummary?.secondaryMetrics[0]?.valueText ?? '--',
-                                      },
-                                      {
-                                        label: genericSummary?.secondaryMetrics[1]?.label ?? 'Detail',
-                                        value: genericSummary?.secondaryMetrics[1]?.valueText ?? '--',
-                                      },
-                                    ];
-
-                                  return (
-                                    <View
-                                      key={`${group.testType}-run-${runIndex}`}
-                                      className="bg-surface-container-lowest rounded-[24px] p-4"
-                                      style={{
-                                        shadowColor: '#2b3438',
-                                        shadowOpacity: 0.05,
-                                        shadowRadius: 20,
-                                        elevation: 4,
-                                      }}
-                                    >
-                                      <View className="flex-row items-center justify-between mb-3">
-                                        <Text className="text-primary text-[11px] uppercase tracking-[1.2px] font-bold">
-                                          {titleText}
-                                        </Text>
-                                        <Text className="text-on-surface-variant text-xs font-semibold">
-                                          {dateLabel}
-                                        </Text>
-                                      </View>
-
-                                      <View className="bg-surface-container-low rounded-2xl px-4 py-3 mb-3">
-                                        <Text className="text-on-surface-variant text-xs font-semibold">
-                                          {mainLabel}
-                                        </Text>
-                                        <Text className="text-on-surface text-[48px] leading-[50px] font-extrabold mt-1">
-                                          {mainValue}
-                                        </Text>
-                                      </View>
-
-                                      <View className="flex-row" style={{ gap: 8 }}>
-                                        {secondaryCards.map((card, cardIndex) => (
-                                          <View
-                                            key={`${group.testType}-run-${runIndex}-mini-${cardIndex}`}
-                                            className="flex-1 bg-surface-container-low rounded-xl p-3"
-                                          >
-                                            <Text className="text-on-surface-variant text-[11px] uppercase tracking-[1px] font-bold">
-                                              {card.label}
-                                            </Text>
-                                            <Text className="text-on-surface text-base font-bold mt-1">
-                                              {card.value}
-                                            </Text>
-                                          </View>
-                                        ))}
-                                      </View>
-
-                                      <View className="mt-3">
-                                        <View className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                                          <View
-                                            className="h-full bg-primary rounded-full"
-                                            style={{ width: '100%' }}
-                                          />
-                                        </View>
-                                      </View>
-                                    </View>
-                                  );
-                                })()
-                              ))}
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ) : null}
-
-                  {sourceMeta.table !== 'test_results' && previewFields.length > 0 ? (
+                  {previewFields.length > 0 ? (
                     <View className="bg-surface-container-lowest rounded-xl p-3 mt-2">
                       <Text className="text-on-surface text-xs font-semibold mb-1">
                         Latest item says:
