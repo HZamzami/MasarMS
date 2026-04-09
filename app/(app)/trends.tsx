@@ -7,9 +7,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useLocalization } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,30 +30,25 @@ interface DomainTrend {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const TREND_CONFIGS: Array<{
+const TREND_CONFIGS: {
   testType: string;
   label: string;
   metricKey: string;
   unit: string;
   higherIsBetter: boolean;
   transform?: (v: number) => number;
-}> = [
-  { testType: 'eSDMT',               label: 'Cognitive Speed',     metricKey: 'ips_score',                unit: 'pts', higherIsBetter: true  },
-  { testType: 'FingerTapping',       label: 'Tap Frequency',        metricKey: 'frequency_hz',             unit: 'Hz',  higherIsBetter: true  },
-  { testType: 'PinchDrag',           label: 'Pinch Accuracy',       metricKey: 'accuracy_pct',             unit: '%',   higherIsBetter: true  },
-  { testType: '2MWT',                label: 'Gait Turns',           metricKey: 'u_turn_count',             unit: 'turns', higherIsBetter: true },
-  { testType: 'ContrastSensitivity', label: 'Contrast Sensitivity', metricKey: 'final_contrast_threshold', unit: '%',   higherIsBetter: false,
+}[] = [
+  { testType: 'eSDMT',               label: 'eSDMT',               metricKey: 'ips_score',                unit: 'pts', higherIsBetter: true  },
+  { testType: 'FingerTapping',       label: 'FingerTapping',       metricKey: 'frequency_hz',             unit: 'Hz',  higherIsBetter: true  },
+  { testType: 'PinchDrag',           label: 'PinchDrag',           metricKey: 'accuracy_pct',             unit: '%',   higherIsBetter: true  },
+  { testType: '2MWT',                label: '2MWT',                metricKey: 'u_turn_count',             unit: 'turns', higherIsBetter: true },
+  { testType: 'ContrastSensitivity', label: 'ContrastSensitivity', metricKey: 'final_contrast_threshold', unit: '%',   higherIsBetter: false,
     transform: (v) => Math.round((1 - v) * 100) },
-  { testType: 'DailyEMA',            label: 'Energy Level',         metricKey: 'energy_level',             unit: '/10', higherIsBetter: true  },
-  { testType: 'MSIS29',              label: 'MS Impact Score',      metricKey: 'total_score',              unit: '/100', higherIsBetter: false },
+  { testType: 'DailyEMA',            label: 'DailyEMA',            metricKey: 'energy_level',             unit: '/10', higherIsBetter: true  },
+  { testType: 'MSIS29',              label: 'MSIS29',              metricKey: 'total_score',              unit: '/100', higherIsBetter: false },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatShortDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getDate()}/${d.getMonth() + 1}`;
-}
 
 function trendArrow(points: DataPoint[], higherIsBetter: boolean): {
   icon: 'trending-up' | 'trending-down' | 'remove';
@@ -140,9 +135,17 @@ function MiniBarChart({
 function TrendCard({
   trend,
   onPress,
+  formatShortDate,
+  emptyLabel,
+  readingsLabel,
+  accessibilityLabel,
 }: {
   trend: DomainTrend;
   onPress: () => void;
+  formatShortDate: (value: string) => string;
+  emptyLabel: string;
+  readingsLabel: (count: number) => string;
+  accessibilityLabel: string;
 }) {
   const latest   = trend.points[trend.points.length - 1];
   const arrow    = trendArrow(trend.points, trend.higherIsBetter);
@@ -158,7 +161,7 @@ function TrendCard({
         elevation: 2,
       }}
       accessibilityRole="button"
-      accessibilityLabel={`${trend.label} trend`}
+      accessibilityLabel={accessibilityLabel}
     >
       <View className="flex-row items-start justify-between mb-4">
         <View>
@@ -173,7 +176,7 @@ function TrendCard({
               <Text className="text-sm font-bold text-on-surface-variant">{trend.unit}</Text>
             </View>
           ) : (
-            <Text className="text-on-surface-variant font-medium">No data yet</Text>
+            <Text className="text-on-surface-variant font-medium">{emptyLabel}</Text>
           )}
         </View>
 
@@ -191,7 +194,7 @@ function TrendCard({
 
       {trend.points.length >= 2 && (
         <Text className="text-xs text-on-surface-variant mt-3">
-          {trend.points.length} readings recorded
+          {readingsLabel(trend.points.length)}
         </Text>
       )}
     </TouchableOpacity>
@@ -201,6 +204,7 @@ function TrendCard({
 // ─── TrendsScreen ─────────────────────────────────────────────────────────────
 
 export default function TrendsScreen() {
+  const { formatDate, formatMessage, messages, textAlign } = useLocalization();
   const [loading, setLoading] = useState(true);
   const [trends, setTrends] = useState<DomainTrend[]>([]);
 
@@ -241,7 +245,7 @@ export default function TrendsScreen() {
 
             return {
               testType: cfg.testType,
-              label: cfg.label,
+              label: messages.shared.trendLabels[cfg.label as keyof typeof messages.shared.trendLabels] ?? cfg.label,
               unit: cfg.unit,
               points,
               higherIsBetter: cfg.higherIsBetter,
@@ -256,7 +260,7 @@ export default function TrendsScreen() {
 
       void loadTrends();
       return () => { active = false; };
-    }, [])
+    }, [messages])
   );
 
   const hasAnyData = trends.some((t) => t.points.length > 0);
@@ -269,9 +273,9 @@ export default function TrendsScreen() {
       >
         {/* Header */}
         <View className="mb-8">
-          <Text className="text-2xl font-extrabold text-on-surface">Your Trends</Text>
-          <Text className="text-sm text-on-surface-variant mt-0.5">
-            Longitudinal view of all biomarker domains
+          <Text className="text-2xl font-extrabold text-on-surface" style={textAlign}>{messages.trends.title}</Text>
+          <Text className="text-sm text-on-surface-variant mt-0.5" style={textAlign}>
+            {messages.trends.subtitle}
           </Text>
         </View>
 
@@ -285,11 +289,11 @@ export default function TrendsScreen() {
             <View className="w-20 h-20 rounded-3xl bg-primary-container items-center justify-center mb-6">
               <Ionicons name="trending-up-outline" size={40} color="#006880" />
             </View>
-            <Text className="text-xl font-extrabold text-on-surface text-center mb-3">
-              No data yet
+            <Text className="text-xl font-extrabold text-on-surface text-center mb-3" style={textAlign}>
+              {messages.trends.emptyTitle}
             </Text>
-            <Text className="text-on-surface-variant text-center leading-relaxed">
-              Complete your first tests on the dashboard to start building your personal trend charts.
+            <Text className="text-on-surface-variant text-center leading-relaxed" style={textAlign}>
+              {messages.trends.emptyBody}
             </Text>
           </View>
         ) : (
@@ -301,13 +305,13 @@ export default function TrendsScreen() {
             >
               <View className="flex-row items-center" style={{ gap: 6 }}>
                 <View style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#006b60' }} />
-                <Text className="text-xs text-on-surface-variant font-medium">Improving</Text>
+                <Text className="text-xs text-on-surface-variant font-medium">{messages.trends.improving}</Text>
               </View>
               <View className="flex-row items-center" style={{ gap: 6 }}>
                 <View style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#a83836' }} />
-                <Text className="text-xs text-on-surface-variant font-medium">Declining</Text>
+                <Text className="text-xs text-on-surface-variant font-medium">{messages.trends.declining}</Text>
               </View>
-              <Text className="text-xs text-on-surface-variant ml-auto">Last bar = most recent</Text>
+              <Text className="text-xs text-on-surface-variant ml-auto">{messages.trends.lastBar}</Text>
             </View>
 
             {trends.map((trend) => (
@@ -315,6 +319,10 @@ export default function TrendsScreen() {
                 key={trend.testType}
                 trend={trend}
                 onPress={() => {/* future: drill-down */}}
+                formatShortDate={(value) => formatDate(value, { day: 'numeric', month: 'numeric' })}
+                emptyLabel={messages.common.noDataYet}
+                readingsLabel={(count) => messages.trends.readingsRecorded.replace('{count}', String(count))}
+                accessibilityLabel={formatMessage(messages.trends.trendA11y, { label: trend.label })}
               />
             ))}
           </>

@@ -1,11 +1,13 @@
 import '../global.css';
 
 import { useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Slot, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import type { Session } from '@supabase/supabase-js';
+import { LocalizationProvider, loadStoredLanguage, useLocalization } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
@@ -26,6 +28,7 @@ async function resolveRoute(session: Session): Promise<'/' | '/onboarding/profil
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
+  const [initialLanguage, setInitialLanguage] = useState<'en' | 'ar'>('en');
   const routeRef = useRef<'/' | '/onboarding/profile' | '/(auth)/welcome'>('/(auth)/welcome');
   const router = useRouter();
 
@@ -33,9 +36,15 @@ export default function RootLayout() {
     let mounted = true;
 
     async function bootstrap() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const [
+        {
+          data: { session },
+        },
+        language,
+      ] = await Promise.all([
+        supabase.auth.getSession(),
+        loadStoredLanguage(),
+      ]);
 
       if (session) {
         routeRef.current = await resolveRoute(session);
@@ -43,7 +52,10 @@ export default function RootLayout() {
         routeRef.current = '/(auth)/welcome';
       }
 
-      if (mounted) setReady(true);
+      if (mounted) {
+        setInitialLanguage(language);
+        setReady(true);
+      }
     }
 
     bootstrap();
@@ -68,19 +80,31 @@ export default function RootLayout() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!ready) return;
     SplashScreen.hideAsync();
     router.replace(routeRef.current);
-  }, [ready]);
+  }, [ready, router]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <Slot />
-      </SafeAreaProvider>
+      <LocalizationProvider initialLanguage={initialLanguage}>
+        <SafeAreaProvider>
+          <LocalizedSlot />
+        </SafeAreaProvider>
+      </LocalizationProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function LocalizedSlot() {
+  const { screenDirection } = useLocalization();
+
+  return (
+    <View style={[{ flex: 1 }, screenDirection]}>
+      <Slot />
+    </View>
   );
 }

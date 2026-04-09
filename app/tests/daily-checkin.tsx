@@ -13,31 +13,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { useLocalization } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { DailyEMAData } from '../../lib/types';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-
 const MOODS = [
-  { label: 'Very\nPoor', emoji: '😫', value: 0 },
-  { label: 'Poor',       emoji: '🙁', value: 1 },
-  { label: 'Neutral',    emoji: '😐', value: 2 },
-  { label: 'Good',       emoji: '🙂', value: 3 },
-  { label: 'Great',      emoji: '🤩', value: 4 },
+  { emoji: '😫', value: 0 },
+  { emoji: '🙁', value: 1 },
+  { emoji: '😐', value: 2 },
+  { emoji: '🙂', value: 3 },
+  { emoji: '🤩', value: 4 },
 ] as const;
 
 type ScreenState = 'form' | 'saving' | 'done';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function toDateKey(iso: string): string {
-  // Converts ISO timestamp to 'YYYY-MM-DD' using the device's local calendar
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  const date = new Date(iso);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 async function computeStreak(): Promise<number> {
@@ -56,37 +52,26 @@ async function computeStreak(): Promise<number> {
 
   if (!rows || rows.length === 0) return 1;
 
-  // Build a set of unique calendar-day keys that have at least one entry
-  const seen = new Set(rows.map((r) => toDateKey(r.created_at)));
-
-  // Walk backwards from today, counting consecutive days
+  const seen = new Set(rows.map((row) => toDateKey(row.created_at)));
   let streak = 0;
   const today = new Date();
-  for (let d = 0; d < 90; d++) {
+  for (let dayOffset = 0; dayOffset < 90; dayOffset += 1) {
     const target = new Date(today);
-    target.setDate(today.getDate() - d);
+    target.setDate(today.getDate() - dayOffset);
     if (!seen.has(toDateKey(target.toISOString()))) break;
-    streak++;
+    streak += 1;
   }
   return Math.max(streak, 1);
 }
 
-function todayLabel(): string {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-// ─── MoodButton ───────────────────────────────────────────────────────────────
-
 function MoodButton({
-  item,
+  emoji,
+  label,
   selected,
   onPress,
 }: {
-  item: (typeof MOODS)[number];
+  emoji: string;
+  label: string;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -96,28 +81,24 @@ function MoodButton({
       hitSlop={{ top: 20, right: 20, bottom: 20, left: 20 }}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={item.label.replace('\n', ' ')}
+      accessibilityLabel={label.replace('\n', ' ')}
       className={`flex-1 items-center justify-center py-4 rounded-2xl border-2 ${
-        selected
-          ? 'bg-secondary-container border-primary'
-          : 'bg-surface-container-low border-transparent'
+        selected ? 'bg-secondary-container border-primary' : 'bg-surface-container-low border-transparent'
       }`}
       style={{ minHeight: 80 }}
     >
-      <Text style={{ fontSize: 28, marginBottom: 4 }}>{item.emoji}</Text>
+      <Text style={{ fontSize: 28, marginBottom: 4 }}>{emoji}</Text>
       <Text
         className={`text-center font-bold uppercase tracking-tighter ${
           selected ? 'text-primary' : 'text-on-surface-variant'
         }`}
         style={{ fontSize: 9 }}
       >
-        {item.label}
+        {label}
       </Text>
     </TouchableOpacity>
   );
 }
-
-// ─── SuccessCard ──────────────────────────────────────────────────────────────
 
 function SuccessCard({
   streak,
@@ -126,55 +107,55 @@ function SuccessCard({
   streak: number;
   onDismiss: () => void;
 }) {
+  const { formatMessage, formatNumber, messages, textAlign } = useLocalization();
   const isFirstDay = streak === 1;
 
   return (
     <View className="flex-1 items-center justify-center px-8">
-      {/* Icon */}
       <View className="w-24 h-24 rounded-full bg-tertiary-container items-center justify-center mb-8">
         <Ionicons name="checkmark-circle" size={56} color="#006b60" />
       </View>
 
-      {/* Heading */}
-      <Text className="text-3xl font-extrabold text-on-surface text-center mb-3">
-        Check-in saved!
+      <Text className="text-3xl font-extrabold text-on-surface text-center mb-3" style={textAlign}>
+        {messages.dailyCheckin.savedTitle}
       </Text>
 
-      {/* Streak badge */}
       <View className="bg-surface-container rounded-2xl px-6 py-4 items-center mb-6 w-full">
         <Text className="text-2xl font-extrabold text-primary mb-1">
-          {isFirstDay ? 'Day 1 — keep it up!' : `🔥 ${streak}-day streak`}
-        </Text>
-        <Text className="text-sm text-on-surface-variant text-center">
           {isFirstDay
-            ? 'Your daily monitoring journey has started.'
-            : 'Consistency builds the most accurate baseline.'}
+            ? messages.dailyCheckin.firstDayBadge
+            : `🔥 ${formatMessage(messages.dailyCheckin.streakBadge, { streak: formatNumber(streak) })}`}
+        </Text>
+        <Text className="text-sm text-on-surface-variant text-center" style={textAlign}>
+          {isFirstDay ? messages.dailyCheckin.firstDayBody : messages.dailyCheckin.streakBody}
         </Text>
       </View>
 
-      {/* Baseline encouragement */}
-      <Text className="text-on-surface-variant text-center leading-relaxed mb-12 px-4">
-        Thank you for contributing to your baseline. Daily check-ins help detect subtle
-        changes before they become noticeable.
+      <Text className="text-on-surface-variant text-center leading-relaxed mb-12 px-4" style={textAlign}>
+        {messages.dailyCheckin.thanksBody}
       </Text>
 
-      {/* CTA */}
       <TouchableOpacity
         onPress={onDismiss}
         className="w-full bg-primary rounded-full py-5 items-center"
         accessibilityRole="button"
-        accessibilityLabel="Back to Dashboard"
+        accessibilityLabel={messages.common.backToDashboard}
       >
-        <Text className="text-on-primary font-bold text-lg">Back to Dashboard</Text>
+        <Text className="text-on-primary font-bold text-lg">{messages.common.backToDashboard}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
-
 export default function DailyCheckin() {
   const router = useRouter();
+  const {
+    backIcon,
+    formatDate,
+    messages,
+    row,
+    textAlign,
+  } = useLocalization();
 
   const [mood, setMood] = useState<number | null>(null);
   const [energy, setEnergy] = useState(5);
@@ -189,12 +170,13 @@ export default function DailyCheckin() {
       setMoodError(true);
       return;
     }
+
     setMoodError(false);
     setSaveError(null);
     setScreenState('saving');
 
     try {
-      const captured_at = new Date().toISOString();
+      const capturedAt = new Date().toISOString();
 
       await saveTestResult({
         domain: 'mood',
@@ -205,7 +187,7 @@ export default function DailyCheckin() {
           energy_level: energy,
           energy_normalized: (energy - 1) / 9,
           notes: notes.trim() || null,
-          captured_at,
+          captured_at: capturedAt,
           frequency: 'daily',
           test_version: '1.0',
         } satisfies DailyEMAData,
@@ -214,9 +196,9 @@ export default function DailyCheckin() {
       const computedStreak = await computeStreak();
       setStreak(computedStreak);
       setScreenState('done');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save. Please try again.';
-      setSaveError(msg);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : messages.common.saveFailed;
+      setSaveError(message);
       setScreenState('form');
     }
   }
@@ -225,65 +207,65 @@ export default function DailyCheckin() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
-      >
-        {/* Header */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <View
-          className="flex-row items-center justify-between px-6 py-4"
-          style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.3)' }}
+          className="items-center justify-between px-6 py-4"
+          style={[row, { borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.3)' }]}
         >
-          <View className="flex-row items-center" style={{ gap: 16 }}>
+          <View className="items-center" style={row}>
             <TouchableOpacity
               onPress={() => router.back()}
               hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={messages.common.back}
             >
-              <Ionicons name="arrow-back" size={24} color="#006880" />
+              <Ionicons name={backIcon} size={24} color="#006880" />
             </TouchableOpacity>
-            <Text className="font-bold text-lg text-on-surface">Daily Check-in</Text>
+            <Text className="font-bold text-lg text-on-surface" style={{ marginStart: 16 }}>
+              {messages.dailyCheckin.title}
+            </Text>
           </View>
-          <Text className="text-xs text-on-surface-variant font-medium">{todayLabel()}</Text>
+          <Text className="text-xs text-on-surface-variant font-medium" style={textAlign}>
+            {formatDate(new Date(), { weekday: 'long', month: 'short', day: 'numeric' })}
+          </Text>
         </View>
 
-        {/* Body */}
         {screenState === 'done' ? (
           <SuccessCard streak={streak} onDismiss={() => router.replace('/')} />
         ) : (
           <>
             <ScrollView
               className="flex-1"
-              contentContainerStyle={{
-                paddingHorizontal: 24,
-                paddingTop: 32,
-                paddingBottom: 120,
-              }}
+              contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 120 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* Greeting */}
               <View className="mb-10">
-                <Text className="text-3xl font-extrabold text-primary leading-tight">
-                  How are you feeling today?
+                <Text className="text-3xl font-extrabold text-primary leading-tight" style={textAlign}>
+                  {messages.dailyCheckin.prompt}
                 </Text>
               </View>
 
-              {/* Mood section */}
               <View className="mb-10">
-                <View className="flex-row justify-between items-center mb-4">
-                  <Text className="font-bold text-xl text-on-surface">Overall Mood</Text>
-                  <Text className="text-sm text-on-surface-variant">Required</Text>
+                <View className="items-center justify-between mb-4" style={row}>
+                  <Text className="font-bold text-xl text-on-surface" style={textAlign}>
+                    {messages.dailyCheckin.moodTitle}
+                  </Text>
+                  <Text className="text-sm text-on-surface-variant" style={textAlign}>
+                    {messages.common.required}
+                  </Text>
                 </View>
-                {moodError && (
-                  <Text className="text-error text-sm mb-3">Please select your mood.</Text>
-                )}
+                {moodError ? (
+                  <Text className="text-error text-sm mb-3" style={textAlign}>
+                    {messages.dailyCheckin.moodRequiredError}
+                  </Text>
+                ) : null}
                 <View className="flex-row" style={{ gap: 8 }}>
-                  {MOODS.map((item) => (
+                  {MOODS.map((item, index) => (
                     <MoodButton
                       key={item.value}
-                      item={item}
+                      emoji={item.emoji}
+                      label={messages.dailyCheckin.moods[index]}
                       selected={mood === item.value}
                       onPress={() => {
                         setMood(item.value);
@@ -294,24 +276,24 @@ export default function DailyCheckin() {
                 </View>
               </View>
 
-              {/* Energy / Fatigue section */}
               <View className="bg-surface-container-low rounded-3xl p-6 mb-10">
-                {/* Section header */}
-                <View className="flex-row items-center mb-6" style={{ gap: 12 }}>
+                <View className="items-center mb-6" style={row}>
                   <View className="w-12 h-12 rounded-full bg-primary-container items-center justify-center">
                     <Ionicons name="flash" size={22} color="#004a5d" />
                   </View>
-                  <View>
-                    <Text className="font-bold text-xl text-on-surface">Energy Level</Text>
-                    <Text className="text-sm text-on-surface-variant">Fatigue Scale (1–10)</Text>
+                  <View className="flex-1" style={{ marginStart: 12 }}>
+                    <Text className="font-bold text-xl text-on-surface" style={textAlign}>
+                      {messages.dailyCheckin.energyTitle}
+                    </Text>
+                    <Text className="text-sm text-on-surface-variant" style={textAlign}>
+                      {messages.dailyCheckin.energySubtitle}
+                    </Text>
                   </View>
-                  {/* Current value pill */}
-                  <View className="ml-auto bg-primary rounded-full w-10 h-10 items-center justify-center">
+                  <View className="bg-primary rounded-full w-10 h-10 items-center justify-center">
                     <Text className="text-on-primary font-extrabold text-base">{energy}</Text>
                   </View>
                 </View>
 
-                {/* Slider */}
                 <Slider
                   minimumValue={1}
                   maximumValue={10}
@@ -321,49 +303,47 @@ export default function DailyCheckin() {
                   minimumTrackTintColor="#006880"
                   maximumTrackTintColor="#dbe4e9"
                   thumbTintColor="#006880"
-                  accessibilityLabel="Energy level slider"
+                  accessibilityLabel={messages.dailyCheckin.energyTitle}
                   accessibilityValue={{ min: 1, max: 10, now: energy }}
                   style={{ marginHorizontal: -4 }}
                 />
 
-                {/* Scale labels */}
-                <View className="flex-row justify-between mt-1 px-1">
-                  <Text className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">
-                    Exhausted
+                <View className="justify-between mt-1 px-1" style={row}>
+                  <Text className="text-xs font-bold text-on-surface-variant uppercase tracking-wide" style={textAlign}>
+                    {messages.dailyCheckin.exhausted}
                   </Text>
-                  <Text className="text-xs font-bold text-primary uppercase tracking-wide">
-                    Energized
+                  <Text className="text-xs font-bold text-primary uppercase tracking-wide" style={textAlign}>
+                    {messages.dailyCheckin.energized}
                   </Text>
                 </View>
               </View>
 
-              {/* Symptoms note */}
               <View className="mb-6">
-                <View className="flex-row items-center mb-3" style={{ gap: 8 }}>
-                  <Ionicons name="create-outline" size={22} color="#006880" />
-                  <Text className="font-bold text-xl text-on-surface">Any new symptoms today?</Text>
+                <View className="items-center mb-3" style={row}>
+                  <Ionicons name="create-outline" size={22} color="#006880" style={{ marginEnd: 8 }} />
+                  <Text className="font-bold text-xl text-on-surface flex-1" style={textAlign}>
+                    {messages.dailyCheckin.symptomsTitle}
+                  </Text>
                 </View>
                 <TextInput
                   value={notes}
                   onChangeText={setNotes}
-                  placeholder="Describe how you're feeling or any specific observations..."
+                  placeholder={messages.dailyCheckin.symptomsPlaceholder}
                   placeholderTextColor="#737c80"
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
                   className="bg-surface-container-highest rounded-2xl p-5 text-on-surface"
-                  style={{ minHeight: 100 }}
-                  accessibilityLabel="Symptom notes — optional"
+                  style={{ minHeight: 100, textAlign: Platform.OS === 'web' ? undefined : textAlign.textAlign, writingDirection: row.flexDirection === 'row-reverse' ? 'rtl' : 'ltr' }}
+                  accessibilityLabel={messages.dailyCheckin.symptomsA11y}
                 />
               </View>
 
-              {/* Save error */}
-              {saveError && (
-                <Text className="text-error text-sm text-center mb-4">{saveError}</Text>
-              )}
+              {saveError ? (
+                <Text className="text-error text-sm text-center mb-4" style={textAlign}>{saveError}</Text>
+              ) : null}
             </ScrollView>
 
-            {/* Fixed CTA */}
             <View
               className="absolute bottom-0 left-0 right-0 px-6 pb-10 pt-4 bg-surface"
               style={{ borderTopWidth: 1, borderTopColor: 'rgba(170,179,184,0.2)' }}
@@ -371,17 +351,17 @@ export default function DailyCheckin() {
               <TouchableOpacity
                 onPress={handleSubmit}
                 disabled={isSaving}
-                className="w-full bg-primary rounded-full py-5 flex-row items-center justify-center"
-                style={{ gap: 10, opacity: isSaving ? 0.7 : 1 }}
+                className="w-full bg-primary rounded-full py-5 items-center justify-center"
+                style={[row, { gap: 10, opacity: isSaving ? 0.7 : 1 }]}
                 accessibilityRole="button"
-                accessibilityLabel="Save daily check-in"
+                accessibilityLabel={messages.dailyCheckin.saveA11y}
                 accessibilityState={{ disabled: isSaving }}
               >
                 {isSaving ? (
                   <ActivityIndicator color="#f1faff" />
                 ) : (
                   <>
-                    <Text className="text-on-primary font-bold text-lg">Save Check-in</Text>
+                    <Text className="text-on-primary font-bold text-lg">{messages.dailyCheckin.saveCta}</Text>
                     <Ionicons name="checkmark-circle-outline" size={22} color="#f1faff" />
                   </>
                 )}

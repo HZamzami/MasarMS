@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { CountdownOverlay } from '../../lib/CountdownOverlay';
+import { useLocalization } from '../../lib/i18n';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { PinchDragData } from '../../lib/types';
 
@@ -67,6 +68,7 @@ function ResultCard({
   trials: TrialResult[];
   onDone: () => void;
 }) {
+  const { messages } = useLocalization();
   const successCount = trials.filter((t) => t.success).length;
   const accuracyPct  = Math.round((successCount / trials.length) * 100);
   const errors       = trials.map((t) => t.errorPx);
@@ -93,16 +95,16 @@ function ResultCard({
       </View>
 
       <Text className="text-3xl font-extrabold text-on-surface text-center mb-1">
-        Test Complete
+        {messages.pinchDrag.resultTitle}
       </Text>
       <Text className="text-on-surface-variant text-center mb-10">
-        Fine Motor Coordination
+        {messages.pinchDrag.resultSubtitle}
       </Text>
 
       <View className="w-full bg-surface-container rounded-3xl p-6 mb-6">
         <View className="items-center mb-6">
           <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-2">
-            Accuracy
+            {messages.pinchDrag.accuracy}
           </Text>
           <Text
             className="font-extrabold"
@@ -123,15 +125,15 @@ function ResultCard({
         <View className="flex-row" style={{ gap: 10 }}>
           <View className="flex-1 bg-surface-container-high rounded-2xl p-4 items-center">
             <Text className="text-2xl font-extrabold text-primary">{successCount}/{trials.length}</Text>
-            <Text className="text-xs text-on-surface-variant mt-1">Successful</Text>
+            <Text className="text-xs text-on-surface-variant mt-1">{messages.pinchDrag.successful}</Text>
           </View>
           <View className="flex-1 bg-surface-container-high rounded-2xl p-4 items-center">
             <Text className="text-2xl font-extrabold text-on-surface">{meanError}</Text>
-            <Text className="text-xs text-on-surface-variant mt-1">Avg error (px)</Text>
+            <Text className="text-xs text-on-surface-variant mt-1">{messages.pinchDrag.averageError}</Text>
           </View>
           <View className="flex-1 bg-surface-container-high rounded-2xl p-4 items-center">
             <Text className="text-2xl font-extrabold text-on-surface-variant">{medianTime}</Text>
-            <Text className="text-xs text-on-surface-variant mt-1">Median (ms)</Text>
+            <Text className="text-xs text-on-surface-variant mt-1">{messages.pinchDrag.medianTime}</Text>
           </View>
         </View>
       </View>
@@ -140,9 +142,9 @@ function ResultCard({
         onPress={onDone}
         className="w-full bg-primary rounded-full py-5 items-center"
         accessibilityRole="button"
-        accessibilityLabel="Back to Dashboard"
+        accessibilityLabel={messages.common.backToDashboard}
       >
-        <Text className="text-on-primary font-bold text-lg">Back to Dashboard</Text>
+        <Text className="text-on-primary font-bold text-lg">{messages.common.backToDashboard}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -153,6 +155,7 @@ function ResultCard({
 export default function PinchDragScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
+  const { backIcon, formatMessage, messages } = useLocalization();
 
   const [screenState, setScreenState] = useState<ScreenState>('instructions');
   const [dominantHand, setDominantHand] = useState<boolean | null>(null);
@@ -180,18 +183,18 @@ export default function PinchDragScreen() {
     setTargetPos({ x: tx, y: ty });
   }, [width, height]);
 
-  function resetToken() {
+  const resetToken = useCallback(() => {
     tokenPos.setValue({ x: tokenStartX, y: tokenStartY });
     tokenOffset.current = { x: tokenStartX, y: tokenStartY };
     isDragging.current = false;
-  }
+  }, [tokenPos, tokenStartX, tokenStartY]);
 
   useEffect(() => {
     if (screenState === 'running') {
       generateTarget();
       resetToken();
     }
-  }, [screenState, trialIndex]);
+  }, [generateTarget, resetToken, screenState, trialIndex]);
 
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => screenState === 'running' && !isDragging.current,
@@ -276,10 +279,10 @@ export default function PinchDragScreen() {
       });
       setScreenState('done');
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
+      setSaveError(err instanceof Error ? err.message : messages.common.saveFailed);
       setScreenState('error');
     }
-  }, []);
+  }, [dominantHand, messages.common.saveFailed]);
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -293,11 +296,11 @@ export default function PinchDragScreen() {
             onPress={() => router.back()}
             hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={messages.common.back}
           >
-            <Ionicons name="arrow-back" size={24} color="#006880" />
+            <Ionicons name={backIcon} size={24} color="#006880" />
           </TouchableOpacity>
-          <Text className="font-bold text-lg text-on-surface">Pinch & Drag</Text>
+          <Text className="font-bold text-lg text-on-surface">{messages.pinchDrag.title}</Text>
         </View>
         {screenState === 'running' && (
           <View className="bg-surface-container px-3 py-1.5 rounded-full">
@@ -312,7 +315,7 @@ export default function PinchDragScreen() {
       {screenState === 'saving' && (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#006880" />
-          <Text className="mt-4 text-on-surface-variant font-medium">Saving results…</Text>
+          <Text className="mt-4 text-on-surface-variant font-medium">{messages.common.saveResults}</Text>
         </View>
       )}
 
@@ -320,13 +323,13 @@ export default function PinchDragScreen() {
       {screenState === 'error' && (
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="cloud-offline-outline" size={64} color="#a83836" />
-          <Text className="text-xl font-bold text-on-surface text-center mt-6 mb-3">Failed to Save</Text>
+          <Text className="text-xl font-bold text-on-surface text-center mt-6 mb-3">{messages.common.failedToSave}</Text>
           <Text className="text-on-surface-variant text-center mb-8">{saveError}</Text>
           <TouchableOpacity onPress={() => void finishTest(trials)} className="w-full bg-primary rounded-full py-5 items-center mb-4">
-            <Text className="text-on-primary font-bold text-lg">Retry</Text>
+            <Text className="text-on-primary font-bold text-lg">{messages.common.retry}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.replace('/')} className="py-3 items-center">
-            <Text className="text-on-surface-variant">Discard and go home</Text>
+            <Text className="text-on-surface-variant">{messages.common.discardAndGoHome}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -378,10 +381,10 @@ export default function PinchDragScreen() {
             <Ionicons name="hand-left-outline" size={44} color="#006880" />
           </View>
           <Text className="text-2xl font-extrabold text-on-surface text-center mb-4">
-            Select Hand
+            {messages.common.selectHand}
           </Text>
           <Text className="text-on-surface-variant text-center leading-relaxed mb-10">
-            Which hand will you be using for this 10-trial precision assessment?
+            {messages.pinchDrag.selectionBody}
           </Text>
           
           <View style={{ gap: 12 }} className="mb-10">
@@ -392,7 +395,7 @@ export default function PinchDragScreen() {
               <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mr-4">
                 <Ionicons name="star" size={20} color="#f1faff" />
               </View>
-              <Text className="text-lg font-bold text-on-surface">Dominant Hand</Text>
+              <Text className="text-lg font-bold text-on-surface">{messages.common.dominantHand}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -402,12 +405,12 @@ export default function PinchDragScreen() {
               <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center mr-4">
                 <Ionicons name="hand-right-outline" size={20} color="#576065" />
               </View>
-              <Text className="text-lg font-bold text-on-surface">Non-Dominant Hand</Text>
+              <Text className="text-lg font-bold text-on-surface">{messages.common.nonDominantHand}</Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity onPress={() => setScreenState('instructions')} className="items-center">
-            <Text className="text-on-surface-variant font-bold">Back</Text>
+            <Text className="text-on-surface-variant font-bold">{messages.common.back}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -419,22 +422,16 @@ export default function PinchDragScreen() {
             <Ionicons name="hand-left-outline" size={44} color="#006880" />
           </View>
           <Text className="text-2xl font-extrabold text-on-surface text-center mb-4">
-            Pinch & Drag
+            {messages.pinchDrag.title}
           </Text>
           <Text className="text-on-surface-variant text-center leading-relaxed mb-8">
-            A blue token will appear at the bottom of the screen. Press and drag it to land
-            on the circular target.
+            {messages.pinchDrag.instructionsBody}
           </Text>
           <View
             className="bg-surface-container-low rounded-2xl p-5 mb-10"
             style={{ gap: 12 }}
           >
-            {[
-              'Hold the blue token with one finger',
-              'Drag and release it onto the target',
-              'You have 10 trials — accuracy matters more than speed',
-              'Use your dominant hand for consistency',
-            ].map((tip, i) => (
+            {messages.pinchDrag.instructionSteps.map((tip, i) => (
               <View key={i} className="flex-row items-center" style={{ gap: 12 }}>
                 <View className="w-6 h-6 rounded-full bg-primary items-center justify-center">
                   <Text className="text-on-primary font-bold text-xs">{i + 1}</Text>
@@ -447,7 +444,7 @@ export default function PinchDragScreen() {
             onPress={() => setScreenState('selection')}
             className="w-full bg-primary rounded-full py-5 items-center"
           >
-            <Text className="text-on-primary font-bold text-lg">Start Test</Text>
+            <Text className="text-on-primary font-bold text-lg">{messages.common.startTest}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -510,7 +507,10 @@ export default function PinchDragScreen() {
             className="items-center"
           >
             <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">
-              Trial {trials.length + 1} of {TOTAL_TRIALS} · Drag token to target
+              {formatMessage(messages.pinchDrag.trialInstruction, {
+                current: trials.length + 1,
+                total: TOTAL_TRIALS,
+              })}
             </Text>
           </View>
         </View>

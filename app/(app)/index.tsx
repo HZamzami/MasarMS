@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -9,25 +10,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useLocalization } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import { getTestSchedule } from '../../lib/scheduling';
 import { getStreak } from '../../lib/gamification';
 import { detectDecline } from '../../lib/decline';
-import type {
-  EsdmtData,
-  FingerTappingData,
-  MSIS29Data,
-  MobilityData,
-  PinchDragData,
-  VisionContrastData,
-  TestScheduleItem,
-  StreakInfo,
-  DailyEMAData,
-} from '../../lib/types';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Row<T> = { data: T; created_at: string } | null;
+import type { TestScheduleItem, StreakInfo } from '../../lib/types';
 
 interface DashboardData {
   daysElapsed: number;
@@ -37,61 +25,53 @@ interface DashboardData {
   alerts: Record<string, 'none' | 'concern' | 'alert'>;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function greeting(): string {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-}
-
-function todayLabel(): string {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
 const DEFAULT_STREAK: StreakInfo = { currentStreak: 0, longestStreak: 0, lastActiveDateKey: null };
 
-// ─── Components ──────────────────────────────────────────────────────────────
+function greeting(messages: ReturnType<typeof useLocalization>['messages']): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return messages.home.greetingMorning;
+  if (hour < 18) return messages.home.greetingAfternoon;
+  return messages.home.greetingEvening;
+}
 
 function PhaseHeader({ daysElapsed }: { daysElapsed: number }) {
+  const { formatMessage, formatNumber, messages, row, textAlign } = useLocalization();
   const isBaseline = daysElapsed < 84;
-  const totalDays = isBaseline ? 84 : 0;
+  const totalDays = 84;
   const weekNum = Math.floor(daysElapsed / 7) + 1;
   const progress = isBaseline ? Math.min(daysElapsed / totalDays, 1) : 1;
 
   return (
     <View className="bg-surface-container-lowest rounded-3xl p-6 mb-8 shadow-sm">
-      <View className="flex-row justify-between items-center mb-4">
-        <View>
-          <Text className="text-xs font-bold text-primary uppercase tracking-widest mb-1">
-            {isBaseline ? 'Induction Phase' : 'Longitudinal Monitoring'}
+      <View className="items-center justify-between mb-4" style={row}>
+        <View className="flex-1">
+          <Text className="text-xs font-bold text-primary uppercase tracking-widest mb-1" style={textAlign}>
+            {isBaseline ? messages.home.inductionPhase : messages.home.longitudinalMonitoring}
           </Text>
-          <Text className="text-2xl font-black text-on-surface">
-            {isBaseline ? `Week ${weekNum} of 12` : 'Steady State'}
+          <Text className="text-2xl font-black text-on-surface" style={textAlign}>
+            {isBaseline
+              ? formatMessage(messages.home.weekOfTwelve, { week: formatNumber(weekNum) })
+              : messages.home.steadyState}
           </Text>
         </View>
         <View className="w-12 h-12 rounded-2xl bg-primary/10 items-center justify-center">
           <Ionicons name={isBaseline ? 'analytics' : 'shield-checkmark'} size={24} color="#006880" />
         </View>
       </View>
-      
+
       {isBaseline && (
         <>
           <View className="h-2.5 bg-surface-container-high rounded-full overflow-hidden mb-3">
-            <View 
-              className="h-full bg-primary" 
-              style={{ width: `${progress * 100}%` }} 
-            />
+            <View className="h-full bg-primary" style={{ width: `${progress * 100}%` }} />
           </View>
-          <View className="flex-row justify-between items-center">
-            <Text className="text-[11px] text-on-surface-variant font-bold uppercase tracking-tight">
-              {84 - daysElapsed} days remaining
+          <View className="items-center justify-between" style={row}>
+            <Text className="text-[11px] text-on-surface-variant font-bold uppercase tracking-tight" style={textAlign}>
+              {formatMessage(messages.home.daysRemaining, {
+                days: formatNumber(Math.max(0, 84 - daysElapsed)),
+              })}
             </Text>
-            <Text className="text-[11px] text-primary font-black uppercase tracking-tight">
-              Establishing Baseline
+            <Text className="text-[11px] text-primary font-black uppercase tracking-tight" style={textAlign}>
+              {messages.home.establishingBaseline}
             </Text>
           </View>
         </>
@@ -100,79 +80,121 @@ function PhaseHeader({ daysElapsed }: { daysElapsed: number }) {
   );
 }
 
-function TaskCard({ item, onPress, compact = false }: { item: TestScheduleItem; onPress: () => void, compact?: boolean }) {
+function TaskCard({ item, onPress }: { item: TestScheduleItem; onPress: () => void }) {
+  const {
+    chevronForwardIcon,
+    formatDate,
+    formatMessage,
+    messages,
+    row,
+    textAlign,
+    translateDomain,
+    translateTestType,
+  } = useLocalization();
   const isLocked = item.status === 'upcoming' || item.status === 'completed';
-  
-  const getIcon = () => {
-    const size = compact ? 20 : 22;
+
+  const renderIcon = () => {
     switch (item.testType) {
-      case 'DailyEMA': return <Ionicons name="sunny-outline" size={size} color="#006880" />;
-      case 'eSDMT': return <MaterialCommunityIcons name="brain" size={size} color="#006880" />;
-      case 'FingerTapping': return <Ionicons name="hand-left-outline" size={size} color="#006880" />;
-      case 'PinchDrag': return <Ionicons name="finger-print-outline" size={size} color="#006880" />;
-      case '2MWT': return <MaterialCommunityIcons name="walk" size={size} color="#006880" />;
-      case 'ContrastSensitivity': return <Ionicons name="eye-outline" size={size} color="#006880" />;
-      case 'MSIS29': return <Ionicons name="clipboard-outline" size={size} color="#006880" />;
-      default: return <Ionicons name="flask-outline" size={size} color="#006880" />;
+      case 'DailyEMA':
+        return <Ionicons name="sunny-outline" size={22} color="#006880" />;
+      case 'eSDMT':
+        return <MaterialCommunityIcons name="brain" size={22} color="#006880" />;
+      case 'FingerTapping':
+        return <Ionicons name="hand-left-outline" size={22} color="#006880" />;
+      case 'PinchDrag':
+        return <Ionicons name="finger-print-outline" size={22} color="#006880" />;
+      case '2MWT':
+        return <MaterialCommunityIcons name="walk" size={22} color="#006880" />;
+      case 'ContrastSensitivity':
+        return <Ionicons name="eye-outline" size={22} color="#006880" />;
+      case 'MSIS29':
+        return <Ionicons name="clipboard-outline" size={22} color="#006880" />;
+      default:
+        return <Ionicons name="flask-outline" size={22} color="#006880" />;
     }
   };
+
+  const subtitle = item.status === 'upcoming'
+    ? formatMessage(messages.home.availableOn, {
+      date: formatDate(item.nextAvailableAt, { month: 'short', day: 'numeric' }),
+    })
+    : item.status === 'completed'
+      ? messages.home.completedForInterval
+      : translateDomain(item.domain);
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={isLocked}
-      className={`flex-row items-center p-4 rounded-2xl mb-3 ${
+      className={`items-center p-4 rounded-2xl mb-3 ${
         isLocked ? 'bg-surface-container-lowest opacity-50' : 'bg-surface-container-low border border-outline-variant/30 shadow-sm'
       }`}
+      style={row}
     >
-      <View className={`rounded-xl items-center justify-center mr-4 ${compact ? 'w-10 h-10' : 'w-12 h-12 bg-surface-container-lowest'}`}>
-        {getIcon()}
+      <View
+        className="w-12 h-12 bg-surface-container-lowest rounded-xl items-center justify-center"
+        style={{ marginEnd: 16 }}
+      >
+        {renderIcon()}
       </View>
-      
+
       <View className="flex-1">
-        <View className="flex-row items-center justify-between">
-          <Text className={`font-bold ${isLocked ? 'text-on-surface-variant' : 'text-on-surface'} ${compact ? 'text-sm' : 'text-base'}`}>
-            {item.label}
+        <View className="items-center justify-between" style={row}>
+          <Text className={`font-bold ${isLocked ? 'text-on-surface-variant' : 'text-on-surface'} text-base`} style={textAlign}>
+            {translateTestType(item.testType)}
           </Text>
-          {item.status === 'overdue' && (
-            <Text className="text-[10px] font-black text-error uppercase tracking-tighter">Overdue</Text>
-          )}
+          {item.status === 'overdue' ? (
+            <Text className="text-[10px] font-black text-error uppercase tracking-tighter" style={textAlign}>
+              {messages.home.overdue}
+            </Text>
+          ) : null}
         </View>
-        <Text className="text-[11px] text-on-surface-variant font-medium mt-0.5">
-          {item.status === 'upcoming' 
-            ? `Available ${new Date(item.nextAvailableAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` 
-            : item.status === 'completed'
-            ? 'Completed for this interval'
-            : item.domain.charAt(0).toUpperCase() + item.domain.slice(1)}
+        <Text className="text-[11px] text-on-surface-variant font-medium mt-0.5" style={textAlign}>
+          {subtitle}
         </Text>
       </View>
 
-      {!isLocked && (
-        <Ionicons name="chevron-forward" size={18} color="#aab3b8" />
-      )}
-      {item.status === 'completed' && (
+      {!isLocked ? (
+        <Ionicons name={chevronForwardIcon} size={18} color="#aab3b8" />
+      ) : null}
+      {item.status === 'completed' ? (
         <Ionicons name="checkmark-circle" size={20} color="#006b60" />
-      )}
+      ) : null}
     </TouchableOpacity>
   );
 }
 
-function FrequencySection({ title, items, daysElapsed, router }: { title: string, items: TestScheduleItem[], daysElapsed: number, router: any }) {
+function FrequencySection({
+  title,
+  items,
+  daysElapsed,
+  router,
+}: {
+  title: string;
+  items: TestScheduleItem[];
+  daysElapsed: number;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const { messages, row, textAlign } = useLocalization();
   if (items.length === 0) return null;
-  
+
   const isBaseline = daysElapsed < 84;
-  
+
   return (
     <View className="mb-8">
-      <View className="flex-row items-baseline justify-between mb-4 px-1">
-        <Text className="text-sm font-black text-on-surface uppercase tracking-widest">{title}</Text>
-        {isBaseline && title !== 'Daily Protocol' && (
+      <View className="items-baseline justify-between mb-4 px-1" style={row}>
+        <Text className="text-sm font-black text-on-surface uppercase tracking-widest" style={textAlign}>
+          {title}
+        </Text>
+        {isBaseline && title !== messages.home.dailyProtocol ? (
           <View className="bg-primary/5 px-2 py-0.5 rounded-md">
-            <Text className="text-[9px] font-bold text-primary uppercase">Induction: 3x/week</Text>
+            <Text className="text-[9px] font-bold text-primary uppercase">
+              {messages.home.inductionThreeTimes}
+            </Text>
           </View>
-        )}
+        ) : null}
       </View>
-      {items.map(item => (
+      {items.map((item) => (
         <TaskCard key={item.testType} item={item} onPress={() => router.push(item.route as never)} />
       ))}
     </View>
@@ -180,50 +202,64 @@ function FrequencySection({ title, items, daysElapsed, router }: { title: string
 }
 
 function HealthStatusSection({ alerts }: { alerts: Record<string, 'none' | 'concern' | 'alert'> }) {
-  const hasAlerts = Object.values(alerts).some(v => v !== 'none');
-  const alertCount = Object.values(alerts).filter(v => v === 'alert').length;
-  const concernCount = Object.values(alerts).filter(v => v === 'concern').length;
+  const { messages, row, textAlign } = useLocalization();
+  const alertCount = Object.values(alerts).filter((value) => value === 'alert').length;
+  const concernCount = Object.values(alerts).filter((value) => value === 'concern').length;
+
+  const statusLabel = alertCount > 0
+    ? messages.home.actionRequired
+    : concernCount > 0
+      ? messages.home.underReview
+      : messages.home.allStable;
+
+  const statusColor = alertCount > 0 ? 'bg-error' : concernCount > 0 ? 'bg-warning' : 'bg-success';
+
+  const domains = [
+    { key: 'cognitive', type: 'eSDMT' },
+    { key: 'motor', type: 'FingerTapping' },
+    { key: 'mobility', type: '2MWT' },
+    { key: 'vision', type: 'ContrastSensitivity' },
+  ] as const;
 
   return (
     <View className="bg-surface-container-lowest rounded-3xl p-6 mb-8 shadow-sm">
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-sm font-black text-on-surface uppercase tracking-widest">Biomarker Status</Text>
-        <View className="flex-row items-center" style={{ gap: 4 }}>
-          <View className={`w-2 h-2 rounded-full ${alertCount > 0 ? 'bg-error' : concernCount > 0 ? 'bg-warning' : 'bg-success'}`} />
-          <Text className="text-[10px] font-bold text-on-surface-variant uppercase">
-            {alertCount > 0 ? 'Action Required' : concernCount > 0 ? 'Under Review' : 'All Stable'}
+      <View className="items-center justify-between mb-4" style={row}>
+        <Text className="text-sm font-black text-on-surface uppercase tracking-widest" style={textAlign}>
+          {messages.home.biomarkerStatus}
+        </Text>
+        <View className="items-center" style={row}>
+          <View className={`w-2 h-2 rounded-full ${statusColor}`} style={{ marginEnd: 6 }} />
+          <Text className="text-[10px] font-bold text-on-surface-variant uppercase" style={textAlign}>
+            {statusLabel}
           </Text>
         </View>
       </View>
 
-      <View className="flex-row justify-between" style={{ gap: 8 }}>
-        {['Cognitive', 'Motor', 'Mobility', 'Vision'].map((domain) => {
-          // Map domain name to test type for lookup
-          const typeMap: Record<string, string> = { 
-            'Cognitive': 'eSDMT', 
-            'Motor': 'FingerTapping', 
-            'Mobility': '2MWT', 
-            'Vision': 'ContrastSensitivity' 
-          };
-          const type = typeMap[domain];
-          const severity = alerts[type] ?? 'none';
-          
+      <View className="justify-between" style={row}>
+        {domains.map((domain) => {
+          const severity = alerts[domain.type] ?? 'none';
           const color = severity === 'alert' ? '#ba1a1a' : severity === 'concern' ? '#b97c00' : '#006b60';
           const bgColor = severity === 'alert' ? '#ffdad6' : severity === 'concern' ? '#ffe08d' : '#e2fff8';
 
           return (
-            <View key={domain} className="flex-1 items-center">
-              <View 
+            <View key={domain.key} className="flex-1 items-center">
+              <View
                 className="w-10 h-10 rounded-2xl items-center justify-center mb-2"
                 style={{ backgroundColor: bgColor }}
               >
-                <Ionicons 
-                  name={domain === 'Cognitive' ? 'brain' : domain === 'Motor' ? 'hand-left' : domain === 'Mobility' ? 'walk' : 'eye'} 
-                  size={20} 
-                  color={color} 
-                />
+                {domain.key === 'cognitive' ? (
+                  <MaterialCommunityIcons name="brain" size={20} color={color} />
+                ) : domain.key === 'motor' ? (
+                  <Ionicons name="hand-left-outline" size={20} color={color} />
+                ) : domain.key === 'mobility' ? (
+                  <MaterialCommunityIcons name="walk" size={20} color={color} />
+                ) : (
+                  <Ionicons name="eye-outline" size={20} color={color} />
+                )}
               </View>
-              <Text className="text-[9px] font-black text-on-surface-variant uppercase">{domain}</Text>
+              <Text className="text-[9px] font-black text-on-surface-variant uppercase" style={textAlign}>
+                {messages.home.statusDomains[domain.key]}
+              </Text>
             </View>
           );
         })}
@@ -232,10 +268,18 @@ function HealthStatusSection({ alerts }: { alerts: Record<string, 'none' | 'conc
   );
 }
 
-// ─── HomeScreen ───────────────────────────────────────────────────────────────
-
 export default function HomeScreen() {
   const router = useRouter();
+  const {
+    formatDate,
+    formatMessage,
+    formatNumber,
+    language,
+    messages,
+    row,
+    textAlign,
+    toggleLanguage,
+  } = useLocalization();
   const [loading, setLoading] = useState(true);
   const [dash, setDash] = useState<DashboardData>({
     daysElapsed: 0,
@@ -252,7 +296,9 @@ export default function HomeScreen() {
       async function loadDashboard() {
         setLoading(true);
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user || !active) return;
 
           const uid = user.id;
@@ -262,14 +308,12 @@ export default function HomeScreen() {
             getStreak(uid),
           ]);
 
-          // Fetch alerts for active tests
           const activeTestTypes = ['eSDMT', 'FingerTapping', 'PinchDrag', '2MWT', 'ContrastSensitivity'];
-          const alertPromises = activeTestTypes.map(type => detectDecline(uid, type));
-          const alertResults = await Promise.all(alertPromises);
-          
+          const alertResults = await Promise.all(activeTestTypes.map((type) => detectDecline(uid, type)));
+
           const alerts: Record<string, 'none' | 'concern' | 'alert'> = {};
-          alertResults.forEach((res, i) => {
-            if (res) alerts[activeTestTypes[i]] = res.severity;
+          alertResults.forEach((result, index) => {
+            if (result) alerts[activeTestTypes[index]] = result.severity;
           });
 
           const enrolledAt = profileRes.data?.created_at ? new Date(profileRes.data.created_at).getTime() : Date.now();
@@ -290,16 +334,17 @@ export default function HomeScreen() {
       }
 
       void loadDashboard();
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }, [])
   );
 
-  const dueTasks = dash.schedule.filter(s => s.status === 'due' || s.status === 'overdue');
-  
-  const dailyTasks = dash.schedule.filter(s => s.frequencyLabel === 'Daily');
-  const weeklyTasks = dash.schedule.filter(s => s.frequencyLabel === 'Weekly');
-  const biweeklyTasks = dash.schedule.filter(s => s.frequencyLabel === 'Biweekly');
-  const monthlyTasks = dash.schedule.filter(s => s.frequencyLabel === 'Monthly');
+  const dueTasks = dash.schedule.filter((item) => item.status === 'due' || item.status === 'overdue');
+  const dailyTasks = dash.schedule.filter((item) => item.frequencyLabel === 'Daily');
+  const weeklyTasks = dash.schedule.filter((item) => item.frequencyLabel === 'Weekly');
+  const biweeklyTasks = dash.schedule.filter((item) => item.frequencyLabel === 'Biweekly');
+  const monthlyTasks = dash.schedule.filter((item) => item.frequencyLabel === 'Monthly');
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -307,22 +352,46 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}
       >
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <View className="flex-row items-center justify-between mb-8">
-          <View>
-            <Text className="text-2xl font-black text-on-surface tracking-tight">{greeting()}</Text>
-            <Text className="text-sm text-on-surface-variant font-bold mt-0.5">{todayLabel()}</Text>
+        <View className="items-center justify-between mb-8" style={row}>
+          <View className="flex-1">
+            <Text className="text-2xl font-black text-on-surface tracking-tight" style={textAlign}>
+              {greeting(messages)}
+            </Text>
+            <Text className="text-sm text-on-surface-variant font-bold mt-0.5" style={textAlign}>
+              {formatDate(new Date(), { weekday: 'short', month: 'short', day: 'numeric' })}
+            </Text>
           </View>
-          <View className="flex-row items-center" style={{ gap: 10 }}>
-            {dash.streak.currentStreak > 1 && (
-              <View className="bg-tertiary-container px-3 py-1.5 rounded-full flex-row items-center" style={{ gap: 6 }}>
-                <Text style={{ fontSize: 14 }}>🔥</Text>
-                <Text className="text-xs font-black text-on-surface-variant">{dash.streak.currentStreak}</Text>
+
+          <View className="items-center" style={row}>
+            <TouchableOpacity
+              className="h-11 rounded-2xl bg-surface-container-low px-4 items-center justify-center border border-outline-variant/30"
+              style={{ marginEnd: 10 }}
+              onPress={() => void toggleLanguage()}
+              accessibilityRole="button"
+              accessibilityLabel={messages.home.languageToggleA11y}
+            >
+              <Text className="text-xs font-black text-primary uppercase tracking-wide">
+                {language === 'en' ? messages.common.switchToArabic : messages.common.switchToEnglish}
+              </Text>
+            </TouchableOpacity>
+
+            {dash.streak.currentStreak > 1 ? (
+              <View
+                className="bg-tertiary-container px-3 py-1.5 rounded-full items-center"
+                style={[row, { marginEnd: 10 }]}
+              >
+                <Text style={{ fontSize: 14, marginEnd: 6 }}>🔥</Text>
+                <Text className="text-xs font-black text-on-surface-variant">
+                  {formatNumber(dash.streak.currentStreak)}
+                </Text>
               </View>
-            )}
-            <TouchableOpacity 
+            ) : null}
+
+            <TouchableOpacity
               className="w-11 h-11 rounded-2xl bg-primary-container items-center justify-center border border-primary/10"
               onPress={() => router.push('/profile')}
+              accessibilityRole="button"
+              accessibilityLabel={messages.home.profileButtonA11y}
             >
               <Ionicons name="person" size={20} color="#006880" />
             </TouchableOpacity>
@@ -331,44 +400,55 @@ export default function HomeScreen() {
 
         {loading ? (
           <View className="flex-1 items-center justify-center py-20">
-            <Text className="text-on-surface-variant font-bold animate-pulse">Syncing Protocol...</Text>
+            <ActivityIndicator size="large" color="#006880" />
+            <Text className="text-on-surface-variant font-bold mt-4" style={textAlign}>
+              {messages.home.syncingProtocol}
+            </Text>
           </View>
         ) : (
           <>
             <PhaseHeader daysElapsed={dash.daysElapsed} />
             <HealthStatusSection alerts={dash.alerts} />
 
-            {/* ── Action Required ─────────────────────────────────────────── */}
-            {dueTasks.length > 0 && (
+            {dueTasks.length > 0 ? (
               <View className="mb-10">
-                <View className="flex-row items-center justify-between mb-4 px-1">
-                  <Text className="text-lg font-black text-on-surface tracking-tight">Action Required</Text>
+                <View className="items-center justify-between mb-4 px-1" style={row}>
+                  <Text className="text-lg font-black text-on-surface tracking-tight" style={textAlign}>
+                    {messages.home.actionRequiredTitle}
+                  </Text>
                   <View className="bg-error-container px-2.5 py-1 rounded-lg">
-                    <Text className="text-[10px] font-black text-error uppercase">{dueTasks.length} pending</Text>
+                    <Text className="text-[10px] font-black text-error uppercase">
+                      {formatMessage(messages.home.pendingCount, {
+                        count: formatNumber(dueTasks.length),
+                      })}
+                    </Text>
                   </View>
                 </View>
-                {dueTasks.map(item => (
+                {dueTasks.map((item) => (
                   <TaskCard key={`due-${item.testType}`} item={item} onPress={() => router.push(item.route as never)} />
                 ))}
               </View>
-            )}
+            ) : null}
 
-            {/* ── Protocol Schedule ───────────────────────────────────────── */}
-            <Text className="text-xl font-black text-on-surface tracking-tight mb-6 px-1">Protocol Schedule</Text>
+            <Text className="text-xl font-black text-on-surface tracking-tight mb-6 px-1" style={textAlign}>
+              {messages.home.protocolSchedule}
+            </Text>
 
-            <FrequencySection title="Daily Protocol" items={dailyTasks} daysElapsed={dash.daysElapsed} router={router} />
-            <FrequencySection title="Weekly Active Tests" items={weeklyTasks} daysElapsed={dash.daysElapsed} router={router} />
-            <FrequencySection title="Biweekly Assessments" items={biweeklyTasks} daysElapsed={dash.daysElapsed} router={router} />
-            <FrequencySection title="Monthly Review" items={monthlyTasks} daysElapsed={dash.daysElapsed} router={router} />
+            <FrequencySection title={messages.home.dailyProtocol} items={dailyTasks} daysElapsed={dash.daysElapsed} router={router} />
+            <FrequencySection title={messages.home.weeklyActiveTests} items={weeklyTasks} daysElapsed={dash.daysElapsed} router={router} />
+            <FrequencySection title={messages.home.biweeklyAssessments} items={biweeklyTasks} daysElapsed={dash.daysElapsed} router={router} />
+            <FrequencySection title={messages.home.monthlyReview} items={monthlyTasks} daysElapsed={dash.daysElapsed} router={router} />
 
-            {/* ── Footer ──────────────────────────────────────────────────── */}
             <View className="mt-8 pt-8 border-t border-outline-variant/30">
               <TouchableOpacity
                 onPress={() => void supabase.auth.signOut()}
-                className="flex-row items-center justify-center py-4 rounded-2xl bg-surface-container-high"
+                className="items-center justify-center py-4 rounded-2xl bg-surface-container-high"
+                style={row}
               >
                 <Ionicons name="log-out-outline" size={18} color="#737c80" />
-                <Text className="text-sm text-on-surface-variant font-bold ml-2">Sign Out</Text>
+                <Text className="text-sm text-on-surface-variant font-bold" style={{ marginStart: 8 }}>
+                  {messages.common.signOut}
+                </Text>
               </TouchableOpacity>
             </View>
           </>

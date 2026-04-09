@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useLocalization } from '../../lib/i18n';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { VisionContrastData } from '../../lib/types';
 
@@ -95,16 +96,17 @@ function ResultCard({
   attempts: number;
   onDone: () => void;
 }) {
+  const { formatMessage, formatNumber, messages, textAlign } = useLocalization();
   const sensitivityScore = Math.round((1 - threshold) * 100);
 
   const tier =
     sensitivityScore >= 80
-      ? { label: 'Normal', color: '#006b60' }
+      ? { label: messages.vision.tierNormal, color: '#006b60' }
       : sensitivityScore >= 60
-      ? { label: 'Mild Reduction', color: '#005b71' }
+      ? { label: messages.vision.tierMild, color: '#005b71' }
       : sensitivityScore >= 40
-      ? { label: 'Moderate Reduction', color: '#506076' }
-      : { label: 'Significant Reduction', color: '#a83836' };
+      ? { label: messages.vision.tierModerate, color: '#506076' }
+      : { label: messages.vision.tierSevere, color: '#a83836' };
 
   const accuracyPct =
     attempts > 0 ? Math.round((correct / attempts) * 100) : 0;
@@ -120,17 +122,17 @@ function ResultCard({
       </View>
 
       <Text className="text-3xl font-extrabold text-on-surface text-center mb-1">
-        Test Complete
+        {messages.vision.completeTitle}
       </Text>
       <Text className="text-on-surface-variant text-center mb-10">
-        Contrast Sensitivity
+        {messages.vision.completeSubtitle}
       </Text>
 
       {/* Score card */}
       <View className="w-full bg-surface-container rounded-3xl p-6 mb-6">
         <View className="items-center mb-6">
           <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-2">
-            Sensitivity Score
+            {messages.vision.sensitivityScore}
           </Text>
           <Text
             className="font-extrabold"
@@ -151,34 +153,35 @@ function ResultCard({
         {/* Stats row */}
         <View className="flex-row" style={{ gap: 10 }}>
           <View className="flex-1 bg-surface-container-high rounded-2xl p-4 items-center">
-            <Text className="text-2xl font-extrabold text-primary">{correct}</Text>
-            <Text className="text-xs text-on-surface-variant mt-1">Correct</Text>
+            <Text className="text-2xl font-extrabold text-primary">{formatNumber(correct)}</Text>
+            <Text className="text-xs text-on-surface-variant mt-1">{messages.vision.correct}</Text>
           </View>
           <View className="flex-1 bg-surface-container-high rounded-2xl p-4 items-center">
-            <Text className="text-2xl font-extrabold text-on-surface">{accuracyPct}%</Text>
-            <Text className="text-xs text-on-surface-variant mt-1">Accuracy</Text>
+            <Text className="text-2xl font-extrabold text-on-surface">{formatNumber(accuracyPct)}%</Text>
+            <Text className="text-xs text-on-surface-variant mt-1">{messages.vision.accuracy}</Text>
           </View>
           <View className="flex-1 bg-surface-container-high rounded-2xl p-4 items-center">
             <Text className="text-2xl font-extrabold text-on-surface-variant">
-              {Math.round(threshold * 100)}%
+              {formatNumber(Math.round(threshold * 100))}%
             </Text>
-            <Text className="text-xs text-on-surface-variant mt-1">Threshold</Text>
+            <Text className="text-xs text-on-surface-variant mt-1">{messages.vision.threshold}</Text>
           </View>
         </View>
       </View>
 
-      <Text className="text-xs text-on-surface-variant text-center mb-10 leading-5 px-2">
-        Your contrast threshold was {Math.round(threshold * 100)}% opacity.
-        Lower thresholds indicate better visual function.
+      <Text className="text-xs text-on-surface-variant text-center mb-10 leading-5 px-2" style={textAlign}>
+        {formatMessage(messages.vision.thresholdNote, {
+          threshold: formatNumber(Math.round(threshold * 100)),
+        })}
       </Text>
 
       <TouchableOpacity
         onPress={onDone}
         className="w-full bg-primary rounded-full py-5 items-center"
         accessibilityRole="button"
-        accessibilityLabel="Back to Dashboard"
+        accessibilityLabel={messages.common.backToDashboard}
       >
-        <Text className="text-on-primary font-bold text-lg">Back to Dashboard</Text>
+        <Text className="text-on-primary font-bold text-lg">{messages.common.backToDashboard}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -188,6 +191,7 @@ function ResultCard({
 
 export default function VisionTestScreen() {
   const router = useRouter();
+  const { backIcon, formatMessage, formatNumber, messages } = useLocalization();
 
   const [target, setTarget] = useState<Letter>('E');
   const [opacityDisplay, setOpacityDisplay] = useState(MAX_OPACITY);
@@ -202,8 +206,8 @@ export default function VisionTestScreen() {
   const failsRef          = useRef(0);
   const totalCorrectRef   = useRef(0);
   const totalAttemptsRef  = useRef(0);
-  const trialLogRef       = useRef<Array<{ opacity: number; correct: boolean }>>([]);
-  const feedbackTimerRef  = useRef<ReturnType<typeof setTimeout>>();
+  const trialLogRef       = useRef<{ opacity: number; correct: boolean }[]>([]);
+  const feedbackTimerRef  = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const animOpacity       = useRef(new Animated.Value(MAX_OPACITY)).current;
 
   useEffect(() => () => { clearTimeout(feedbackTimerRef.current); }, []);
@@ -241,10 +245,10 @@ export default function VisionTestScreen() {
       });
       setScreenState('done');
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
+      setSaveError(err instanceof Error ? err.message : messages.common.saveFailed);
       setScreenState('error');
     }
-  }, []);
+  }, [messages.common.saveFailed]);
 
   const handleLetterPress = useCallback(
     (pressed: Letter) => {
@@ -308,6 +312,9 @@ export default function VisionTestScreen() {
 
   const isGridDisabled = screenState !== 'running' || feedback !== null;
   const attemptsLeft   = FAIL_THRESHOLD - consecutiveFails;
+  const attemptLabel = attemptCount === 1
+    ? formatMessage(messages.vision.attemptSingular, { count: formatNumber(attemptCount) })
+    : formatMessage(messages.vision.attemptPlural, { count: formatNumber(attemptCount) });
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -321,16 +328,16 @@ export default function VisionTestScreen() {
             onPress={() => router.back()}
             hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={messages.common.back}
           >
-            <Ionicons name="arrow-back" size={24} color="#006880" />
+            <Ionicons name={backIcon} size={24} color="#006880" />
           </TouchableOpacity>
-          <Text className="font-bold text-lg text-on-surface">Contrast Sensitivity</Text>
+          <Text className="font-bold text-lg text-on-surface">{messages.vision.title}</Text>
         </View>
 
         <View className="bg-surface-container px-3 py-1.5 rounded-full">
           <Text className="text-xs font-bold text-on-surface-variant">
-            {attemptCount} {attemptCount === 1 ? 'attempt' : 'attempts'}
+            {attemptLabel}
           </Text>
         </View>
       </View>
@@ -339,7 +346,7 @@ export default function VisionTestScreen() {
       {screenState === 'saving' && (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#006880" />
-          <Text className="mt-4 text-on-surface-variant font-medium">Saving results…</Text>
+          <Text className="mt-4 text-on-surface-variant font-medium">{messages.vision.saving}</Text>
         </View>
       )}
 
@@ -348,23 +355,23 @@ export default function VisionTestScreen() {
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="cloud-offline-outline" size={64} color="#a83836" />
           <Text className="text-xl font-bold text-on-surface text-center mt-6 mb-3">
-            Failed to Save
+            {messages.common.failedToSave}
           </Text>
           <Text className="text-on-surface-variant text-center mb-8">{saveError}</Text>
           <TouchableOpacity
             onPress={() => void finishTest()}
             className="w-full bg-primary rounded-full py-5 items-center mb-4"
             accessibilityRole="button"
-            accessibilityLabel="Retry saving results"
+            accessibilityLabel={messages.common.retry}
           >
-            <Text className="text-on-primary font-bold text-lg">Retry</Text>
+            <Text className="text-on-primary font-bold text-lg">{messages.common.retry}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.replace('/')}
             className="py-3 items-center"
             accessibilityRole="button"
           >
-            <Text className="text-on-surface-variant">Discard and go home</Text>
+            <Text className="text-on-surface-variant">{messages.common.discardAndGoHome}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -395,7 +402,7 @@ export default function VisionTestScreen() {
             }}
           >
             <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-10">
-              Tap the letter you see below
+              {messages.vision.prompt}
             </Text>
 
             <Animated.Text
@@ -407,7 +414,7 @@ export default function VisionTestScreen() {
                 lineHeight: 192,
               }}
               accessibilityRole="text"
-              accessibilityLabel="Central letter — identify it in the grid below"
+              accessibilityLabel={messages.vision.prompt}
             >
               {target}
             </Animated.Text>
@@ -452,10 +459,12 @@ export default function VisionTestScreen() {
             <View className="mt-5 flex-row justify-center items-center" style={{ gap: 8 }}>
               <View className="w-2 h-2 rounded-full bg-tertiary" />
               <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                Contrast {Math.round(opacityDisplay * 100)}%
-                {consecutiveFails > 0
-                  ? `  ·  ${attemptsLeft} left before end`
-                  : ''}
+                {formatMessage(messages.vision.contrastStatus, {
+                  contrast: formatNumber(Math.round(opacityDisplay * 100)),
+                  suffix: consecutiveFails > 0
+                    ? formatMessage(messages.vision.leftBeforeEnd, { count: formatNumber(attemptsLeft) })
+                    : '',
+                })}
               </Text>
             </View>
           </View>

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useLocalization } from './i18n';
 
 interface CountdownOverlayProps {
   onFinished: () => void;
 }
 
 export function CountdownOverlay({ onFinished }: CountdownOverlayProps) {
+  const { messages } = useLocalization();
   const [count, setCount] = useState(3);
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
@@ -66,7 +68,7 @@ export function CountdownOverlay({ onFinished }: CountdownOverlayProps) {
         >
           {count}
         </Animated.Text>
-        <Text style={styles.subtext}>Ready?</Text>
+        <Text style={styles.subtext}>{messages.common.ready}</Text>
       </View>
     </Animated.View>
   );

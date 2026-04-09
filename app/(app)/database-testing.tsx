@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalization } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 
 type SourceResult = {
@@ -19,8 +20,6 @@ type SourceResult = {
 
 type TestHistoryGroup = {
   testType: string;
-  count: number;
-  latestRow: Record<string, unknown>;
   runs: Record<string, unknown>[];
 };
 
@@ -32,7 +31,6 @@ type RunSummaryMetric = {
 };
 
 type RunSummaryCardData = {
-  title: string;
   dateLabel: string;
   mainMetric: RunSummaryMetric;
   secondaryMetrics: RunSummaryMetric[];
@@ -49,50 +47,33 @@ const HIDDEN_RUN_FIELDS = new Set([
 ]);
 
 const DATA_SOURCES = [
-  { table: 'profiles', title: 'About You' },
-  { table: 'test_results', title: 'Your Test History' },
-  { table: 'passive_events', title: 'Background Data' },
+  { table: 'profiles', titleKey: 'aboutYou' },
+  { table: 'test_results', titleKey: 'yourTestHistory' },
+  { table: 'passive_events', titleKey: 'backgroundData' },
 ] as const;
 
-function getErrorText(error: unknown) {
-  if (!error) return 'Unknown problem';
+function getErrorText(error: unknown, fallback: string) {
+  if (!error) return fallback;
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
   if (typeof error === 'object' && error !== null) {
     const message = (error as { message?: unknown }).message;
     if (typeof message === 'string') return message;
   }
-  return 'Unknown problem';
+  return fallback;
 }
 
 function simpleLabel(input: string) {
-  return input.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+  return input.replace(/_/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function simpleValue(value: unknown) {
-  if (value === null) return 'nothing';
-  if (value === undefined) return 'nothing';
+function simpleValue(value: unknown, messages: ReturnType<typeof useLocalization>['messages']) {
+  if (value === null || value === undefined) return messages.databaseTesting.nothing;
   if (typeof value === 'string') return value.length > 40 ? `${value.slice(0, 40)}...` : value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (Array.isArray(value)) return `${value.length} things`;
-  if (typeof value === 'object') return 'extra details';
-  return 'extra details';
-}
-
-function formatDateForDisplay(value: unknown) {
-  if (typeof value !== 'string') return simpleValue(value);
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  const rawHours = date.getHours();
-  const hours12 = rawHours % 12 || 12;
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const amPm = rawHours >= 12 ? 'PM' : 'AM';
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear().toString().slice(-2);
-
-  return `${hours12.toString().padStart(2, '0')}:${minutes} ${amPm} ${day}/${month}/${year}`;
+  if (Array.isArray(value)) return `${value.length} ${messages.databaseTesting.things}`;
+  if (typeof value === 'object') return messages.databaseTesting.extraDetails;
+  return messages.databaseTesting.extraDetails;
 }
 
 function normalizeTestType(testType: string) {
@@ -139,7 +120,12 @@ function inferTapCountFromEvents(record: Record<string, unknown> | null): number
   return null;
 }
 
-function formatMetricValue(value: unknown) {
+function displayFieldLabel(key: string) {
+  if (key === 'created_at') return 'Date';
+  return simpleLabel(key);
+}
+
+function formatMetricValue(value: unknown, messages: ReturnType<typeof useLocalization>['messages']) {
   const numeric = toFiniteNumber(value);
   if (numeric !== null) {
     if (Math.abs(numeric) >= 100 || Number.isInteger(numeric)) {
@@ -148,155 +134,122 @@ function formatMetricValue(value: unknown) {
     return { valueText: numeric.toFixed(2), numericValue: numeric };
   }
   if (typeof value === 'boolean') {
-    return { valueText: value ? 'Yes' : 'No', numericValue: null };
+    return { valueText: value ? messages.databaseTesting.yes : messages.databaseTesting.no, numericValue: null };
   }
-  return { valueText: simpleValue(value), numericValue: null };
-}
-
-function buildGeneralRunSummary(testType: string, run: Record<string, unknown>): RunSummaryCardData {
-  const nestedData = asObject(run.data);
-  const topLevel = asObject(run);
-  const rawEntries: [string, unknown][] = [];
-
-  for (const [key, value] of Object.entries(run)) {
-    if (HIDDEN_RUN_FIELDS.has(key)) continue;
-    if (key === 'created_at' || key === 'data') continue;
-    rawEntries.push([key, value]);
-  }
-
-  if (nestedData) {
-    for (const [key, value] of Object.entries(nestedData)) {
-      if (key === 'tap_events' || key === 'tapEvents') continue;
-      if (rawEntries.some(([existing]) => existing === key)) continue;
-      rawEntries.push([key, value]);
-    }
-  }
-
-  let metrics: RunSummaryMetric[] = rawEntries.map(([key, value]) => {
-    const formatted = formatMetricValue(value);
-    return {
-      key,
-      label: displayFieldLabel(key),
-      valueText: formatted.valueText,
-      numericValue: formatted.numericValue,
-    };
-  }).filter((metric) => metric.valueText !== 'extra details');
-
-  if (isEsdmtTest(testType)) {
-    const scorePct =
-      getNumberByKeys(topLevel, ['score_pct', 'scorePct']) ??
-      getNumberByKeys(nestedData, ['score_pct', 'scorePct']);
-    const correctMatches =
-      getNumberByKeys(topLevel, ['correct_matches', 'correctMatches']) ??
-      getNumberByKeys(nestedData, ['correct_matches', 'correctMatches']);
-
-    metrics = metrics.map((metric) => {
-      const normalizedKey = normalizeTestType(metric.key);
-      if ((normalizedKey === 'durationseconds' || normalizedKey === 'duration') && scorePct !== null) {
-        return {
-          ...metric,
-          label: 'Score %',
-          valueText: `${Math.round(scorePct)}%`,
-          numericValue: scorePct,
-        };
-      }
-      if (normalizedKey === 'ipsscore' && correctMatches !== null) {
-        return {
-          ...metric,
-          label: 'Correct Matches',
-          valueText: String(Math.round(correctMatches)),
-          numericValue: correctMatches,
-        };
-      }
-      return metric;
-    });
-  }
-
-  const preferredMainKeys = [
-    'score',
-    'accuracy',
-    'u_turn_count',
-    'average_acceleration',
-    'frequency_hz',
-    'fatigue_index',
-    'duration_seconds',
-    'total_attempts',
-    'correct_matches',
-  ];
-
-  let mainMetric =
-    preferredMainKeys
-      .map((key) => metrics.find((metric) => normalizeTestType(metric.key) === normalizeTestType(key)))
-      .find((metric) => metric && metric.numericValue !== null) ?? null;
-
-  if (!mainMetric) {
-    mainMetric = metrics.find((metric) => metric.numericValue !== null) ?? metrics[0] ?? {
-      key: 'run',
-      label: 'Run',
-      valueText: '--',
-      numericValue: null,
-    };
-  }
-
-  const secondaryMetrics = metrics
-    .filter((metric) => metric.key !== mainMetric.key)
-    .slice(0, 2);
-
-  while (secondaryMetrics.length < 2) {
-    secondaryMetrics.push({
-      key: `placeholder-${secondaryMetrics.length}`,
-      label: secondaryMetrics.length === 0 ? 'Status' : 'Detail',
-      valueText: '--',
-      numericValue: null,
-    });
-  }
-
-  return {
-    title: `${simpleLabel(testType)} Result`,
-    dateLabel: formatDateForDisplay(run.created_at),
-    mainMetric,
-    secondaryMetrics,
-  };
-}
-
-function getFingerTappingMetrics(run: Record<string, unknown>) {
-  const nestedData = asObject(run.data);
-  const topLevel = asObject(run);
-
-  const totalTaps =
-    getNumberByKeys(topLevel, ['total_taps', 'totalTaps']) ??
-    getNumberByKeys(nestedData, ['total_taps', 'totalTaps']) ??
-    inferTapCountFromEvents(topLevel) ??
-    inferTapCountFromEvents(nestedData) ??
-    0;
-
-  const frequencyHz =
-    getNumberByKeys(topLevel, ['frequency_hz', 'frequencyHz']) ??
-    getNumberByKeys(nestedData, ['frequency_hz', 'frequencyHz']) ??
-    totalTaps / 10;
-
-  const fatigueIndex =
-    getNumberByKeys(topLevel, ['fatigue_index', 'fatigueIndex']) ??
-    getNumberByKeys(nestedData, ['fatigue_index', 'fatigueIndex']);
-
-  const barPercent = Math.max(0, Math.min(100, Math.round((totalTaps / 120) * 100)));
-
-  return {
-    totalTaps: Math.max(0, Math.round(totalTaps)),
-    frequencyHz,
-    fatigueIndex,
-    barPercent,
-    dateLabel: formatDateForDisplay(run.created_at),
-  };
-}
-
-function displayFieldLabel(key: string) {
-  if (key === 'created_at') return 'Date';
-  return simpleLabel(key);
+  return { valueText: simpleValue(value, messages), numericValue: null };
 }
 
 export default function DatabaseTestingScreen() {
   const router = useRouter();
+  const {
+    backIcon,
+    formatMessage,
+    formatNumber,
+    locale,
+    messages,
+    row,
+    textAlign,
+    translateTestType,
+  } = useLocalization();
+
+  const formatDateForDisplay = useCallback((value: unknown) => {
+    if (typeof value !== 'string') return simpleValue(value, messages);
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString(locale);
+  }, [locale, messages]);
+
+  const buildGeneralRunSummary = useCallback((testType: string, run: Record<string, unknown>): RunSummaryCardData => {
+    const nestedData = asObject(run.data);
+    const rawEntries: [string, unknown][] = [];
+
+    for (const [key, value] of Object.entries(run)) {
+      if (HIDDEN_RUN_FIELDS.has(key) || key === 'created_at' || key === 'data') continue;
+      rawEntries.push([key, value]);
+    }
+
+    if (nestedData) {
+      for (const [key, value] of Object.entries(nestedData)) {
+        if (key === 'tap_events' || key === 'tapEvents') continue;
+        if (rawEntries.some(([existingKey]) => existingKey === key)) continue;
+        rawEntries.push([key, value]);
+      }
+    }
+
+    let metrics: RunSummaryMetric[] = rawEntries
+      .map(([key, value]) => {
+        const formatted = formatMetricValue(value, messages);
+        return {
+          key,
+          label: displayFieldLabel(key),
+          valueText: formatted.valueText,
+          numericValue: formatted.numericValue,
+        };
+      })
+      .filter((metric) => metric.valueText !== messages.databaseTesting.extraDetails);
+
+    if (isEsdmtTest(testType)) {
+      const scorePct =
+        getNumberByKeys(asObject(run), ['score_pct', 'scorePct']) ??
+        getNumberByKeys(nestedData, ['score_pct', 'scorePct']);
+      const correctMatches =
+        getNumberByKeys(asObject(run), ['correct_matches', 'correctMatches']) ??
+        getNumberByKeys(nestedData, ['correct_matches', 'correctMatches']);
+
+      metrics = metrics.map((metric) => {
+        const normalizedKey = normalizeTestType(metric.key);
+        if ((normalizedKey === 'durationseconds' || normalizedKey === 'duration') && scorePct !== null) {
+          return { ...metric, label: 'Score %', valueText: `${Math.round(scorePct)}%`, numericValue: scorePct };
+        }
+        if (normalizedKey === 'ipsscore' && correctMatches !== null) {
+          return { ...metric, label: messages.results.correct, valueText: String(Math.round(correctMatches)), numericValue: correctMatches };
+        }
+        return metric;
+      });
+    }
+
+    const preferredMainKeys = [
+      'score',
+      'accuracy',
+      'u_turn_count',
+      'average_acceleration',
+      'frequency_hz',
+      'fatigue_index',
+      'duration_seconds',
+      'total_attempts',
+      'correct_matches',
+    ];
+
+    let mainMetric =
+      preferredMainKeys
+        .map((key) => metrics.find((metric) => normalizeTestType(metric.key) === normalizeTestType(key)))
+        .find((metric) => metric && metric.numericValue !== null) ?? null;
+
+    if (!mainMetric) {
+      mainMetric = metrics.find((metric) => metric.numericValue !== null) ?? metrics[0] ?? {
+        key: 'run',
+        label: messages.databaseTesting.result,
+        valueText: '--',
+        numericValue: null,
+      };
+    }
+
+    const secondaryMetrics = metrics.filter((metric) => metric.key !== mainMetric.key).slice(0, 2);
+    while (secondaryMetrics.length < 2) {
+      secondaryMetrics.push({
+        key: `placeholder-${secondaryMetrics.length}`,
+        label: secondaryMetrics.length === 0 ? messages.databaseTesting.status : messages.databaseTesting.detail,
+        valueText: '--',
+        numericValue: null,
+      });
+    }
+
+    return {
+      dateLabel: formatDateForDisplay(run.created_at),
+      mainMetric,
+      secondaryMetrics,
+    };
+  }, [formatDateForDisplay, messages]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -313,33 +266,28 @@ export default function DatabaseTestingScreen() {
     } = await supabase.auth.getUser();
 
     if (userError) {
-      setAuthProblem(getErrorText(userError));
+      setAuthProblem(getErrorText(userError, messages.databaseTesting.unknownProblem));
       setResults([]);
       return;
     }
     if (!user) {
-      setAuthProblem('I could not find a signed-in user.');
+      setAuthProblem(messages.databaseTesting.noSignedInUser);
       setResults([]);
       return;
     }
 
     const pulls = DATA_SOURCES.map(async (source) => {
-      const { data, error } = await supabase
-        .from(source.table)
-        .select('*')
-        .limit(200);
-
+      const { data, error } = await supabase.from(source.table).select('*').limit(200);
       return {
         source: source.table,
         rows: Array.isArray(data) ? (data as Record<string, unknown>[]) : [],
-        error: error ? getErrorText(error) : null,
+        error: error ? getErrorText(error, messages.databaseTesting.unknownProblem) : null,
       } satisfies SourceResult;
     });
 
-    const pulled = await Promise.all(pulls);
-    setResults(pulled);
+    setResults(await Promise.all(pulls));
     setLastChecked(new Date());
-  }, []);
+  }, [messages]);
 
   useEffect(() => {
     let mounted = true;
@@ -376,37 +324,15 @@ export default function DatabaseTestingScreen() {
     if (!testHistorySource || testHistorySource.rows.length === 0) return [] as TestHistoryGroup[];
 
     const groups = new Map<string, TestHistoryGroup>();
-
     for (const row of testHistorySource.rows) {
       const rawTestType = row.test_type;
-      const testType = typeof rawTestType === 'string' && rawTestType.length > 0
-        ? rawTestType
-        : 'Unknown Test';
-
+      const testType = typeof rawTestType === 'string' && rawTestType.length > 0 ? rawTestType : 'Unknown Test';
       const existing = groups.get(testType);
       if (!existing) {
-        groups.set(testType, {
-          testType,
-          count: 1,
-          latestRow: row,
-          runs: [row],
-        });
+        groups.set(testType, { testType, runs: [row] });
         continue;
       }
-
-      existing.count += 1;
       existing.runs.push(row);
-
-      const existingDate = typeof existing.latestRow.created_at === 'string'
-        ? new Date(existing.latestRow.created_at).getTime()
-        : Number.NEGATIVE_INFINITY;
-      const incomingDate = typeof row.created_at === 'string'
-        ? new Date(row.created_at).getTime()
-        : Number.NEGATIVE_INFINITY;
-
-      if (incomingDate > existingDate) {
-        existing.latestRow = row;
-      }
     }
 
     for (const group of groups.values()) {
@@ -422,25 +348,27 @@ export default function DatabaseTestingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
-      <View className="px-6 pt-4 pb-3 flex-row items-center justify-between">
-        <View className="flex-row items-center" style={{ gap: 10 }}>
+      <View className="px-6 pt-4 pb-3 items-center justify-between" style={row}>
+        <View className="items-center" style={row}>
           <TouchableOpacity
             onPress={() => router.back()}
             hitSlop={20}
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={messages.common.back}
           >
-            <Ionicons name="arrow-back" size={24} color="#006880" />
+            <Ionicons name={backIcon} size={24} color="#006880" />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-primary">Database Testing</Text>
+          <Text className="text-xl font-bold text-primary" style={{ marginStart: 10 }}>
+            {messages.databaseTesting.title}
+          </Text>
         </View>
         <TouchableOpacity
           className="px-3 py-2 rounded-full bg-primary"
           onPress={() => void onRefresh()}
           accessibilityRole="button"
-          accessibilityLabel="Refresh data"
+          accessibilityLabel={messages.common.refresh}
         >
-          <Text className="text-on-primary text-xs font-semibold">Refresh</Text>
+          <Text className="text-on-primary text-xs font-semibold">{messages.common.refresh}</Text>
         </TouchableOpacity>
       </View>
 
@@ -450,41 +378,39 @@ export default function DatabaseTestingScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
       >
         <View className="bg-surface-container-low rounded-2xl p-4 mb-4">
-          <Text className="text-on-surface text-base font-bold">Simple Data View</Text>
-          <Text className="text-on-surface-variant text-xs mt-1">
-            I checked {DATA_SOURCES.length} data places.
+          <Text className="text-on-surface text-base font-bold" style={textAlign}>
+            {messages.databaseTesting.simpleDataView}
           </Text>
-          <Text className="text-on-surface-variant text-xs">
-            I found {totalItems} saved things in total.
+          <Text className="text-on-surface-variant text-xs mt-1" style={textAlign}>
+            {formatMessage(messages.databaseTesting.checkedPlaces, { count: formatNumber(DATA_SOURCES.length) })}
           </Text>
-          <Text className="text-on-surface-variant text-xs">
-            Last check: {lastChecked ? lastChecked.toLocaleString() : 'not yet'}
+          <Text className="text-on-surface-variant text-xs" style={textAlign}>
+            {formatMessage(messages.databaseTesting.foundThings, { count: formatNumber(totalItems) })}
           </Text>
-          {loading ? (
-            <Text className="text-primary text-sm mt-2">Looking for your data...</Text>
-          ) : null}
-          {authProblem ? (
-            <Text className="text-error text-xs mt-2">{authProblem}</Text>
-          ) : null}
+          <Text className="text-on-surface-variant text-xs" style={textAlign}>
+            {formatMessage(messages.databaseTesting.lastCheck, {
+              value: lastChecked ? lastChecked.toLocaleString(locale) : messages.databaseTesting.notYet,
+            })}
+          </Text>
+          {loading ? <Text className="text-primary text-sm mt-2">{messages.databaseTesting.looking}</Text> : null}
+          {authProblem ? <Text className="text-error text-xs mt-2">{authProblem}</Text> : null}
         </View>
 
         {DATA_SOURCES.map((sourceMeta) => {
           const sourceResult = results.find((entry) => entry.source === sourceMeta.table);
-          const rowCount = sourceResult?.rows.length ?? 0;
-          const firstRow = rowCount > 0 ? sourceResult?.rows[0] : null;
+          const sourceTitle = messages.databaseTesting[sourceMeta.titleKey];
+          const firstRow = sourceResult?.rows[0];
           const previewFields = firstRow
-            ? Object.entries(firstRow)
-              .filter(([key]) => key !== 'id' && key !== 'user_id')
-              .slice(0, 3)
+            ? Object.entries(firstRow).filter(([key]) => key !== 'id' && key !== 'user_id').slice(0, 3)
             : [];
 
           if (sourceMeta.table === 'test_results') {
             if (sourceResult?.error) {
               return (
                 <View key={sourceMeta.table} className="bg-surface-container-low rounded-2xl p-4 mb-3">
-                  <Text className="text-on-surface font-bold text-base">Test Results</Text>
+                  <Text className="text-on-surface font-bold text-base">{messages.databaseTesting.testResults}</Text>
                   <Text className="text-error text-xs mt-2">
-                    I could not read this part right now: {sourceResult.error}
+                    {formatMessage(messages.databaseTesting.couldNotReadPart, { error: sourceResult.error })}
                   </Text>
                 </View>
               );
@@ -493,10 +419,8 @@ export default function DatabaseTestingScreen() {
             if (testHistoryGroups.length === 0) {
               return (
                 <View key={sourceMeta.table} className="bg-surface-container-low rounded-2xl p-4 mb-3">
-                  <Text className="text-on-surface font-bold text-base">Test Results</Text>
-                  <Text className="text-on-surface-variant text-xs mt-1">
-                    No saved test runs yet.
-                  </Text>
+                  <Text className="text-on-surface font-bold text-base">{messages.databaseTesting.testResults}</Text>
+                  <Text className="text-on-surface-variant text-xs mt-1">{messages.databaseTesting.noSavedRuns}</Text>
                 </View>
               );
             }
@@ -506,111 +430,98 @@ export default function DatabaseTestingScreen() {
                 {testHistoryGroups.map((group) => (
                   <View key={`${sourceMeta.table}-${group.testType}`} className="bg-surface-container-low rounded-2xl p-4">
                     <Text className="text-on-surface font-bold text-base">
-                      {simpleLabel(group.testType)}
+                      {translateTestType(group.testType)}
                     </Text>
 
                     <View className="mt-2" style={{ gap: 8 }}>
-                      {group.runs.map((run, runIndex) => (
-                        (() => {
-                          const isFinger = isFingerTappingTest(group.testType);
-                          const fingerMetrics = isFinger ? getFingerTappingMetrics(run) : null;
-                          const genericSummary = !isFinger ? buildGeneralRunSummary(group.testType, run) : null;
+                      {group.runs.map((run, runIndex) => {
+                        const isFinger = isFingerTappingTest(group.testType);
+                        const fingerMetrics = isFinger
+                          ? {
+                            totalTaps:
+                              getNumberByKeys(asObject(run), ['total_taps', 'totalTaps']) ??
+                              getNumberByKeys(asObject(run.data), ['total_taps', 'totalTaps']) ??
+                              inferTapCountFromEvents(asObject(run)) ??
+                              inferTapCountFromEvents(asObject(run.data)) ??
+                              0,
+                            frequencyHz:
+                              getNumberByKeys(asObject(run), ['frequency_hz', 'frequencyHz']) ??
+                              getNumberByKeys(asObject(run.data), ['frequency_hz', 'frequencyHz']) ??
+                              0,
+                            fatigueIndex:
+                              getNumberByKeys(asObject(run), ['fatigue_index', 'fatigueIndex']) ??
+                              getNumberByKeys(asObject(run.data), ['fatigue_index', 'fatigueIndex']),
+                            dateLabel: formatDateForDisplay(run.created_at),
+                          }
+                          : null;
+                        const genericSummary = !isFinger ? buildGeneralRunSummary(group.testType, run) : null;
 
-                          const titleText = isFinger
-                            ? `Finger Tapping Run ${runIndex + 1}`
-                            : `Run ${runIndex + 1}`;
-                          const dateLabel = isFinger
-                            ? fingerMetrics?.dateLabel ?? '--'
-                            : genericSummary?.dateLabel ?? '--';
+                        const secondaryCards = isFinger
+                          ? [
+                            {
+                              label: messages.databaseTesting.frequency,
+                              value: `${(fingerMetrics?.frequencyHz ?? 0).toFixed(2)} Hz`,
+                            },
+                            {
+                              label: messages.databaseTesting.fatigueIndex,
+                              value: fingerMetrics?.fatigueIndex === null || fingerMetrics?.fatigueIndex === undefined
+                                ? '--'
+                                : fingerMetrics.fatigueIndex.toFixed(2),
+                            },
+                          ]
+                          : [
+                            {
+                              label: genericSummary?.secondaryMetrics[0]?.label ?? messages.databaseTesting.status,
+                              value: genericSummary?.secondaryMetrics[0]?.valueText ?? '--',
+                            },
+                            {
+                              label: genericSummary?.secondaryMetrics[1]?.label ?? messages.databaseTesting.detail,
+                              value: genericSummary?.secondaryMetrics[1]?.valueText ?? '--',
+                            },
+                          ];
 
-                          const mainLabel = isFinger
-                            ? 'Total Taps'
-                            : genericSummary?.mainMetric.label ?? 'Result';
-                          const mainValue = isFinger
-                            ? String(fingerMetrics?.totalTaps ?? 0)
-                            : genericSummary?.mainMetric.valueText ?? '--';
-
-                          const secondaryCards = isFinger
-                            ? [
-                              {
-                                label: 'Frequency',
-                                value: `${(fingerMetrics?.frequencyHz ?? 0).toFixed(2)} Hz`,
-                              },
-                              {
-                                label: 'Fatigue Index',
-                                value: fingerMetrics?.fatigueIndex === null || fingerMetrics?.fatigueIndex === undefined
-                                  ? '--'
-                                  : fingerMetrics.fatigueIndex.toFixed(2),
-                              },
-                            ]
-                            : [
-                              {
-                                label: genericSummary?.secondaryMetrics[0]?.label ?? 'Status',
-                                value: genericSummary?.secondaryMetrics[0]?.valueText ?? '--',
-                              },
-                              {
-                                label: genericSummary?.secondaryMetrics[1]?.label ?? 'Detail',
-                                value: genericSummary?.secondaryMetrics[1]?.valueText ?? '--',
-                              },
-                            ];
-
-                          return (
-                            <View
-                              key={`${group.testType}-run-${runIndex}`}
-                              className="bg-surface-container-lowest rounded-[24px] p-4"
-                              style={{
-                                shadowColor: '#2b3438',
-                                shadowOpacity: 0.05,
-                                shadowRadius: 20,
-                                elevation: 4,
-                              }}
-                            >
-                              <View className="flex-row items-center justify-between mb-3">
-                                <Text className="text-primary text-[11px] uppercase tracking-[1.2px] font-bold">
-                                  {titleText}
-                                </Text>
-                                <Text className="text-on-surface-variant text-xs font-semibold">
-                                  {dateLabel}
-                                </Text>
-                              </View>
-
-                              <View className="bg-surface-container-low rounded-2xl px-4 py-3 mb-3">
-                                <Text className="text-on-surface-variant text-xs font-semibold">
-                                  {mainLabel}
-                                </Text>
-                                <Text className="text-on-surface text-[48px] leading-[50px] font-extrabold mt-1">
-                                  {mainValue}
-                                </Text>
-                              </View>
-
-                              <View className="flex-row" style={{ gap: 8 }}>
-                                {secondaryCards.map((card, cardIndex) => (
-                                  <View
-                                    key={`${group.testType}-run-${runIndex}-mini-${cardIndex}`}
-                                    className="flex-1 bg-surface-container-low rounded-xl p-3"
-                                  >
-                                    <Text className="text-on-surface-variant text-[11px] uppercase tracking-[1px] font-bold">
-                                      {card.label}
-                                    </Text>
-                                    <Text className="text-on-surface text-base font-bold mt-1">
-                                      {card.value}
-                                    </Text>
-                                  </View>
-                                ))}
-                              </View>
-
-                              <View className="mt-3">
-                                <View className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                                  <View
-                                    className="h-full bg-primary rounded-full"
-                                    style={{ width: '100%' }}
-                                  />
-                                </View>
-                              </View>
+                        return (
+                          <View
+                            key={`${group.testType}-run-${runIndex}`}
+                            className="bg-surface-container-lowest rounded-[24px] p-4"
+                            style={{ shadowColor: '#2b3438', shadowOpacity: 0.05, shadowRadius: 20, elevation: 4 }}
+                          >
+                            <View className="items-center justify-between mb-3" style={row}>
+                              <Text className="text-primary text-[11px] uppercase tracking-[1.2px] font-bold">
+                                {isFinger
+                                  ? formatMessage(messages.databaseTesting.fingerRun, { index: formatNumber(runIndex + 1) })
+                                  : formatMessage(messages.databaseTesting.run, { index: formatNumber(runIndex + 1) })}
+                              </Text>
+                              <Text className="text-on-surface-variant text-xs font-semibold">
+                                {isFinger ? fingerMetrics?.dateLabel ?? '--' : genericSummary?.dateLabel ?? '--'}
+                              </Text>
                             </View>
-                          );
-                        })()
-                      ))}
+
+                            <View className="bg-surface-container-low rounded-2xl px-4 py-3 mb-3">
+                              <Text className="text-on-surface-variant text-xs font-semibold">
+                                {isFinger ? messages.databaseTesting.totalTaps : genericSummary?.mainMetric.label ?? messages.databaseTesting.result}
+                              </Text>
+                              <Text className="text-on-surface text-[48px] leading-[50px] font-extrabold mt-1">
+                                {isFinger ? formatNumber(Math.round(fingerMetrics?.totalTaps ?? 0)) : genericSummary?.mainMetric.valueText ?? '--'}
+                              </Text>
+                            </View>
+
+                            <View style={[row, { gap: 8 }]}>
+                              {secondaryCards.map((card, cardIndex) => (
+                                <View
+                                  key={`${group.testType}-run-${runIndex}-mini-${cardIndex}`}
+                                  className="flex-1 bg-surface-container-low rounded-xl p-3"
+                                >
+                                  <Text className="text-on-surface-variant text-[11px] uppercase tracking-[1px] font-bold">
+                                    {card.label}
+                                  </Text>
+                                  <Text className="text-on-surface text-base font-bold mt-1">{card.value}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        );
+                      })}
                     </View>
                   </View>
                 ))}
@@ -620,28 +531,24 @@ export default function DatabaseTestingScreen() {
 
           return (
             <View key={sourceMeta.table} className="bg-surface-container-low rounded-2xl p-4 mb-3">
-              <Text className="text-on-surface font-bold text-base">{sourceMeta.title}</Text>
+              <Text className="text-on-surface font-bold text-base">{sourceTitle}</Text>
 
               {sourceResult?.error ? (
                 <Text className="text-error text-xs mt-2">
-                  I could not read this part right now: {sourceResult.error}
+                  {formatMessage(messages.databaseTesting.couldNotReadPart, { error: sourceResult.error })}
                 </Text>
-              ) : (
-                <>
-                  {previewFields.length > 0 ? (
-                    <View className="bg-surface-container-lowest rounded-xl p-3 mt-2">
-                      <Text className="text-on-surface text-xs font-semibold mb-1">
-                        Latest item says:
-                      </Text>
-                      {previewFields.map(([key, value]) => (
-                        <Text key={`${sourceMeta.table}-${key}`} className="text-on-surface-variant text-xs">
-                          {displayFieldLabel(key)}: {key === 'created_at' ? formatDateForDisplay(value) : simpleValue(value)}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                </>
-              )}
+              ) : previewFields.length > 0 ? (
+                <View className="bg-surface-container-lowest rounded-xl p-3 mt-2">
+                  <Text className="text-on-surface text-xs font-semibold mb-1">
+                    {messages.databaseTesting.latestItemSays}
+                  </Text>
+                  {previewFields.map(([key, value]) => (
+                    <Text key={`${sourceMeta.table}-${key}`} className="text-on-surface-variant text-xs">
+                      {displayFieldLabel(key)}: {key === 'created_at' ? formatDateForDisplay(value) : simpleValue(value, messages)}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
             </View>
           );
         })}

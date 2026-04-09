@@ -11,6 +11,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
 import { saveTestResult } from '../../lib/saveTestResult';
 import { CountdownOverlay } from '../../lib/CountdownOverlay';
+import { useLocalization } from '../../lib/i18n';
 import type { EsdmtData } from '../../lib/types';
 
 // ─── Icon set (9 unique MaterialCommunityIcons) ────────────────────────────
@@ -48,6 +49,7 @@ function formatTime(seconds: number): string {
 // ─── Component ─────────────────────────────────────────────────────────────
 export default function EsdmtScreen() {
   const router = useRouter();
+  const { backIcon, formatMessage, formatNumber, messages } = useLocalization();
 
   const key = useRef<KeyEntry[]>(generateKey()).current;
   const [currentIdx, setCurrentIdx] = useState(() => Math.floor(Math.random() * 9));
@@ -57,7 +59,7 @@ export default function EsdmtScreen() {
   const [correct, setCorrect] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [done, setDone] = useState(false);
-  const feedbackTimer = useRef<ReturnType<typeof setTimeout>>();
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Refs mirror state so saveObservation reads final values without stale closure risk
   const attemptsRef = useRef(0);
@@ -153,9 +155,9 @@ export default function EsdmtScreen() {
       {/* Top bar */}
       <View className="flex-row justify-between items-center px-6 py-4">
         <TouchableOpacity onPress={() => router.back()} hitSlop={20}>
-          <Ionicons name="arrow-back" size={24} color="#006880" />
+          <Ionicons name={backIcon} size={24} color="#006880" />
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-on-surface">MasarMS</Text>
+        <Text className="text-xl font-bold text-on-surface">{messages.common.appName}</Text>
         <View className="w-8 h-8" />
       </View>
 
@@ -167,14 +169,14 @@ export default function EsdmtScreen() {
           </Text>
         </View>
         <Text className="text-xs font-semibold text-on-surface-variant mt-2 tracking-widest uppercase">
-          Remaining Time
+          {messages.common.timeRemaining}
         </Text>
       </View>
 
       {/* Reference key – 9 columns */}
       <View className="mx-4 mb-8 bg-surface-container-low rounded-xl p-2 border border-outline-variant">
         <Text className="text-xs font-bold text-on-surface-variant text-center mb-2 uppercase tracking-wider">
-          Reference Key
+          {messages.esdmt.referenceKey}
         </Text>
         <View className="flex-row justify-around">
           {key.map(({ icon, number }) => (
@@ -206,10 +208,13 @@ export default function EsdmtScreen() {
           />
         </View>
         <Text className="mt-6 text-on-surface-variant text-sm">
-          Select the corresponding number below
+          {messages.esdmt.selectPrompt}
         </Text>
         <Text className="mt-2 text-xs text-on-surface-variant">
-          {correct}/{attempts} correct
+          {formatMessage(messages.esdmt.correctProgress, {
+            correct: formatNumber(correct),
+            attempts: formatNumber(attempts),
+          })}
         </Text>
       </View>
 
@@ -236,7 +241,7 @@ export default function EsdmtScreen() {
             }}
             onPress={() => handlePress(n)}
             hitSlop={16}
-            accessibilityLabel={`Number ${n}`}
+            accessibilityLabel={formatMessage(messages.esdmt.numberA11y, { number: formatNumber(n) })}
             accessibilityRole="button"
           >
             <Text className="text-2xl font-bold text-primary">{n}</Text>

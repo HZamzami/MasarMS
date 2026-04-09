@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useLocalization } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 
 type Mode = 'login' | 'signup';
@@ -21,6 +22,7 @@ type Screen = 'form' | 'verify';
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
+  const { messages, backIcon, inputAlign, row, textAlign } = useLocalization();
 
   const [mode, setMode] = useState<Mode>(params.mode === 'signup' ? 'signup' : 'login');
   const [screen, setScreen] = useState<Screen>('form');
@@ -61,9 +63,9 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     setResendLoading(false);
     if (error) {
-      setResendInfo(`Could not resend: ${error.message}`);
+      setResendInfo(messages.auth.resendFailed.replace('{message}', error.message));
     } else {
-      setResendInfo('Email resent — check your inbox.');
+      setResendInfo(messages.auth.resendSuccess);
     }
   }
 
@@ -83,10 +85,10 @@ export default function LoginScreen() {
           </View>
 
           <Text className="text-3xl font-extrabold text-on-surface text-center mb-3">
-            Check your email
+            {messages.auth.checkEmail}
           </Text>
           <Text className="text-on-surface-variant text-center leading-7 mb-2">
-            We sent a confirmation link to
+            {messages.auth.confirmationSentTo}
           </Text>
           <Text className="font-bold text-primary text-center mb-8">{email}</Text>
 
@@ -94,16 +96,12 @@ export default function LoginScreen() {
             className="w-full bg-surface-container-low rounded-2xl p-5 mb-8"
             style={{ gap: 12 }}
           >
-            {[
-              'Open your email app',
-              'Tap the confirmation link',
-              'Come back here and sign in',
-            ].map((step, i) => (
-              <View key={i} className="flex-row items-center" style={{ gap: 12 }}>
+            {messages.auth.emailSteps.map((step, i) => (
+              <View key={i} className="flex-row items-center" style={[{ gap: 12 }, row]}>
                 <View className="w-7 h-7 rounded-full bg-primary items-center justify-center">
                   <Text className="text-on-primary font-bold text-xs">{i + 1}</Text>
                 </View>
-                <Text className="text-on-surface font-medium">{step}</Text>
+                <Text className="text-on-surface font-medium" style={textAlign}>{step}</Text>
               </View>
             ))}
           </View>
@@ -118,7 +116,7 @@ export default function LoginScreen() {
             className="mb-4"
           >
             <Text className="text-primary font-semibold text-sm">
-              {resendLoading ? 'Sending…' : "Didn't get it? Resend email"}
+              {resendLoading ? messages.auth.sending : messages.auth.resendEmail}
             </Text>
           </TouchableOpacity>
 
@@ -129,9 +127,9 @@ export default function LoginScreen() {
             }}
             className="w-full bg-primary rounded-full py-5 items-center mt-4"
             accessibilityRole="button"
-            accessibilityLabel="Go to sign in"
+            accessibilityLabel={messages.auth.a11yGoToSignIn}
           >
-            <Text className="text-on-primary font-bold text-lg">Sign In</Text>
+            <Text className="text-on-primary font-bold text-lg">{messages.auth.signIn}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -160,9 +158,9 @@ export default function LoginScreen() {
             className="self-start mb-8"
             hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
             accessibilityRole="button"
-            accessibilityLabel="Go back to welcome screen"
+            accessibilityLabel={messages.auth.a11yGoBackToWelcome}
           >
-            <Ionicons name="arrow-back" size={24} color="#006880" />
+            <Ionicons name={backIcon} size={24} color="#006880" />
           </TouchableOpacity>
 
           {/* Branding */}
@@ -171,12 +169,12 @@ export default function LoginScreen() {
               <MaterialCommunityIcons name="brain" size={34} color="#006880" />
             </View>
             <Text className="text-3xl font-extrabold text-on-surface tracking-tight mb-1">
-              {mode === 'login' ? 'Welcome back' : 'Create account'}
+              {mode === 'login' ? messages.auth.welcomeBack : messages.auth.createAccount}
             </Text>
-            <Text className="text-on-surface-variant text-sm text-center">
+            <Text className="text-on-surface-variant text-sm text-center" style={textAlign}>
               {mode === 'login'
-                ? 'Sign in to continue your monitoring.'
-                : 'Join Masar MS to start tracking your health.'}
+                ? messages.auth.signInSubtitle
+                : messages.auth.signUpSubtitle}
             </Text>
           </View>
 
@@ -184,23 +182,24 @@ export default function LoginScreen() {
           {error && (
             <View
               className="rounded-2xl p-4 mb-5 flex-row items-center"
-              style={{ backgroundColor: 'rgba(168,56,54,0.08)', gap: 10 }}
+              style={[{ backgroundColor: 'rgba(168,56,54,0.08)', gap: 10 }, row]}
             >
               <Ionicons name="alert-circle-outline" size={20} color="#a83836" />
-              <Text className="flex-1 text-sm text-error">{error}</Text>
+              <Text className="flex-1 text-sm text-error" style={textAlign}>{error}</Text>
             </View>
           )}
 
           {/* Email */}
           <View className="mb-4">
             <Text className="text-sm font-semibold text-on-surface-variant mb-2 ml-1">
-              Email address
+              {messages.auth.emailAddress}
             </Text>
-            <View className="flex-row items-center bg-surface-container-highest rounded-2xl px-4 h-14">
+            <View className="flex-row items-center bg-surface-container-highest rounded-2xl px-4 h-14" style={row}>
               <Ionicons name="mail-outline" size={20} color="#737c80" />
               <TextInput
                 className="flex-1 ml-3 text-base text-on-surface"
-                placeholder="you@example.com"
+                style={inputAlign}
+                placeholder={messages.auth.emailPlaceholder}
                 placeholderTextColor="#aab3b8"
                 value={email}
                 onChangeText={setEmail}
@@ -209,7 +208,7 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 autoComplete="email"
                 returnKeyType="next"
-                accessibilityLabel="Email address"
+                accessibilityLabel={messages.auth.emailAddress}
               />
             </View>
           </View>
@@ -217,13 +216,14 @@ export default function LoginScreen() {
           {/* Password */}
           <View className="mb-6">
             <Text className="text-sm font-semibold text-on-surface-variant mb-2 ml-1">
-              Password
+              {messages.auth.password}
             </Text>
-            <View className="flex-row items-center bg-surface-container-highest rounded-2xl px-4 h-14">
+            <View className="flex-row items-center bg-surface-container-highest rounded-2xl px-4 h-14" style={row}>
               <Ionicons name="lock-closed-outline" size={20} color="#737c80" />
               <TextInput
                 className="flex-1 ml-3 text-base text-on-surface"
-                placeholder={mode === 'signup' ? 'Min. 6 characters' : 'Your password'}
+                style={inputAlign}
+                placeholder={mode === 'signup' ? messages.auth.signupPasswordPlaceholder : messages.auth.loginPasswordPlaceholder}
                 placeholderTextColor="#aab3b8"
                 value={password}
                 onChangeText={setPassword}
@@ -233,12 +233,12 @@ export default function LoginScreen() {
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 returnKeyType="done"
                 onSubmitEditing={handleSubmit}
-                accessibilityLabel="Password"
+                accessibilityLabel={messages.auth.password}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword((v) => !v)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityLabel={showPassword ? messages.auth.hidePassword : messages.auth.showPassword}
               >
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -256,13 +256,13 @@ export default function LoginScreen() {
             className="w-full bg-primary rounded-full h-14 items-center justify-center mb-4"
             style={{ opacity: loading ? 0.7 : 1 }}
             accessibilityRole="button"
-            accessibilityLabel={mode === 'login' ? 'Sign in' : 'Create account'}
+            accessibilityLabel={mode === 'login' ? messages.auth.signIn : messages.auth.createAccount}
           >
             {loading ? (
               <ActivityIndicator color="#f1faff" />
             ) : (
               <Text className="text-on-primary font-bold text-base">
-                {mode === 'login' ? 'Sign In' : 'Create Account'}
+                {mode === 'login' ? messages.auth.signIn : messages.auth.createAccountCta}
               </Text>
             )}
           </TouchableOpacity>
@@ -278,8 +278,8 @@ export default function LoginScreen() {
           >
             <Text className="text-primary font-semibold text-sm">
               {mode === 'login'
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Sign in'}
+                ? messages.auth.noAccount
+                : messages.auth.alreadyHaveAccount}
             </Text>
           </TouchableOpacity>
         </ScrollView>

@@ -78,7 +78,7 @@ export interface FingerTappingData {
   total_taps: number;
   frequency_hz: number;
   fatigue_index: number;
-  dominant_hand: 'left' | 'right' | null;
+  dominant_hand: boolean | null;
   tap_events: Array<{ t: number; side: 'L' | 'R' }>;
   duration_seconds: number;
 }
@@ -188,7 +188,7 @@ export interface PinchDragData {
   miss_count: number;
   /** Accuracy 0–100% (successful drops / total trials × 100) */
   accuracy_pct: number;
-  dominant_hand: 'left' | 'right' | null;
+  dominant_hand: boolean | null;
   test_version: string;
 }
 

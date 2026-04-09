@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalization } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import type { Profile } from '../../lib/types';
 
@@ -20,159 +21,125 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TOTAL_STEPS = 3;
 
-// ─── Phenotype config (PRMS removed — not in current ICD classification) ──────
-
-const PHENOTYPES: Array<{
-  key: MsPhenotype;
-  label: string;
-  shortLabel: string;
-  subtitle: string;
-  icon: IoniconName;
-}> = [
-  {
-    key: 'RRMS',
-    label: 'Relapsing-Remitting MS',
-    shortLabel: 'RRMS',
-    subtitle: 'Relapses followed by recovery periods.',
-    icon: 'refresh-circle-outline',
-  },
-  {
-    key: 'SPMS',
-    label: 'Secondary Progressive MS',
-    shortLabel: 'SPMS',
-    subtitle: 'Steady progression following an initial relapsing course.',
-    icon: 'trending-up-outline',
-  },
-  {
-    key: 'PPMS',
-    label: 'Primary Progressive MS',
-    shortLabel: 'PPMS',
-    subtitle: 'Gradual worsening from onset.',
-    icon: 'stats-chart-outline',
-  },
-  {
-    key: 'PRMS',
-    label: 'Progressive-Relapsing MS',
-    shortLabel: 'PRMS',
-    subtitle: 'Steady progression with acute relapses.',
-    icon: 'alert-circle-outline',
-  },
+const PHENOTYPES: { key: MsPhenotype; icon: IoniconName }[] = [
+  { key: 'RRMS', icon: 'refresh-circle-outline' },
+  { key: 'SPMS', icon: 'trending-up-outline' },
+  { key: 'PPMS', icon: 'stats-chart-outline' },
 ];
 
-// ─── Education level config ────────────────────────────────────────────────────
-// Education level is a key covariate for cognitive baseline interpretation —
-// higher education correlates with better eSDMT performance independent of MS.
-
-const EDUCATION_LEVELS: Array<{ key: string; label: string; icon: IoniconName }> = [
-  { key: 'primary',           label: 'Primary / Middle School',  icon: 'school-outline'     },
-  { key: 'high_school',       label: 'High School / GED',        icon: 'ribbon-outline'     },
-  { key: 'vocational',        label: 'Vocational / Technical',   icon: 'hammer-outline'     },
-  { key: 'bachelor',          label: "Bachelor's Degree",        icon: 'library-outline'    },
-  { key: 'graduate_plus',     label: 'Master / PhD / MD',        icon: 'trophy-outline'     },
+const EDUCATION_LEVELS: { key: string; icon: IoniconName }[] = [
+  { key: 'primary', icon: 'school-outline' },
+  { key: 'high_school', icon: 'ribbon-outline' },
+  { key: 'vocational', icon: 'hammer-outline' },
+  { key: 'bachelor', icon: 'library-outline' },
+  { key: 'graduate_plus', icon: 'trophy-outline' },
 ];
-
-// ─── PhenotypeCard ────────────────────────────────────────────────────────────
 
 function PhenotypeCard({
   item,
+  index,
   selected,
   onPress,
 }: {
   item: (typeof PHENOTYPES)[number];
+  index: number;
   selected: boolean;
   onPress: () => void;
 }) {
+  const { messages, row, textAlign } = useLocalization();
+  const copy = messages.onboarding.phenotype.cards[index];
+
   return (
     <TouchableOpacity
       onPress={onPress}
       hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={item.label}
-      className={`flex-row items-center p-4 rounded-2xl border-2 ${
-        selected
-          ? 'bg-surface-container-lowest border-primary'
-          : 'bg-surface-container border-transparent'
+      accessibilityLabel={copy.label}
+      className={`items-center p-4 rounded-2xl border-2 ${
+        selected ? 'bg-surface-container-lowest border-primary' : 'bg-surface-container border-transparent'
       }`}
-      style={
+      style={[
+        row,
         selected
           ? {
-              shadowColor: '#006880',
-              shadowOpacity: 0.12,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 3,
-            }
-          : undefined
-      }
+            shadowColor: '#006880',
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 3,
+          }
+          : undefined,
+      ]}
     >
       <View
-        className={`w-11 h-11 rounded-full items-center justify-center mr-4 ${
+        className={`w-11 h-11 rounded-full items-center justify-center ${
           selected ? 'bg-primary' : 'bg-surface-container-highest'
         }`}
+        style={{ marginEnd: 16 }}
       >
         <Ionicons name={item.icon} size={22} color={selected ? '#f1faff' : '#576065'} />
       </View>
       <View className="flex-1">
-        <View className="flex-row items-center" style={{ gap: 8 }}>
-          <Text className="font-bold text-sm text-on-surface">{item.label}</Text>
-          <View className="bg-surface-container px-2 py-0.5 rounded-full">
-            <Text className="text-xs font-bold text-on-surface-variant">{item.shortLabel}</Text>
+        <View className="items-center" style={row}>
+          <Text className="font-bold text-sm text-on-surface flex-1" style={textAlign}>
+            {copy.label}
+          </Text>
+          <View className="bg-surface-container px-2 py-0.5 rounded-full" style={{ marginStart: 8 }}>
+            <Text className="text-xs font-bold text-on-surface-variant">{copy.shortLabel}</Text>
           </View>
         </View>
-        <Text className="text-xs text-on-surface-variant mt-1 leading-5">{item.subtitle}</Text>
+        <Text className="text-xs text-on-surface-variant mt-1 leading-5" style={textAlign}>
+          {copy.subtitle}
+        </Text>
       </View>
-      {selected && (
-        <Ionicons name="checkmark-circle" size={22} color="#006880" style={{ marginLeft: 8 }} />
-      )}
+      {selected ? (
+        <Ionicons name="checkmark-circle" size={22} color="#006880" style={{ marginStart: 8 }} />
+      ) : null}
     </TouchableOpacity>
   );
 }
 
-// ─── EducationCard ────────────────────────────────────────────────────────────
-
 function EducationCard({
   item,
+  index,
   selected,
   onPress,
 }: {
   item: (typeof EDUCATION_LEVELS)[number];
+  index: number;
   selected: boolean;
   onPress: () => void;
 }) {
+  const { messages, row, textAlign } = useLocalization();
+
   return (
     <TouchableOpacity
       onPress={onPress}
       hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={item.label}
-      className={`flex-row items-center px-4 py-3.5 rounded-2xl border-2 ${
-        selected
-          ? 'bg-surface-container-lowest border-primary'
-          : 'bg-surface-container border-transparent'
+      accessibilityLabel={messages.onboarding.education.levels[index]}
+      className={`items-center px-4 py-3.5 rounded-2xl border-2 ${
+        selected ? 'bg-surface-container-lowest border-primary' : 'bg-surface-container border-transparent'
       }`}
+      style={row}
     >
       <View
-        className={`w-9 h-9 rounded-full items-center justify-center mr-3 ${
+        className={`w-9 h-9 rounded-full items-center justify-center ${
           selected ? 'bg-primary' : 'bg-surface-container-highest'
         }`}
+        style={{ marginEnd: 12 }}
       >
         <Ionicons name={item.icon} size={18} color={selected ? '#f1faff' : '#576065'} />
       </View>
-      <Text
-        className={`flex-1 text-sm font-semibold ${
-          selected ? 'text-primary' : 'text-on-surface'
-        }`}
-      >
-        {item.label}
+      <Text className={`flex-1 text-sm font-semibold ${selected ? 'text-primary' : 'text-on-surface'}`} style={textAlign}>
+        {messages.onboarding.education.levels[index]}
       </Text>
-      {selected && <Ionicons name="checkmark-circle" size={20} color="#006880" />}
+      {selected ? <Ionicons name="checkmark-circle" size={20} color="#006880" /> : null}
     </TouchableOpacity>
   );
 }
-
-// ─── InputField ───────────────────────────────────────────────────────────────
 
 function InputField({
   label,
@@ -188,31 +155,36 @@ function InputField({
   hint?: string;
   error?: string;
 } & React.ComponentProps<typeof TextInput>) {
+  const { inputAlign, messages, row, textAlign } = useLocalization();
   const [focused, setFocused] = useState(false);
 
   return (
     <View>
-      <View className="flex-row justify-between items-center mb-2 ml-1">
-        <Text className="text-sm font-semibold text-on-surface-variant">{label}</Text>
-        {optional && (
+      <View className="items-center justify-between mb-2 ml-1" style={row}>
+        <Text className="text-sm font-semibold text-on-surface-variant" style={textAlign}>
+          {label}
+        </Text>
+        {optional ? (
           <View className="bg-surface-container px-2 py-0.5 rounded-full">
-            <Text className="text-xs font-semibold text-on-surface-variant">Optional</Text>
+            <Text className="text-xs font-semibold text-on-surface-variant">{messages.common.optional}</Text>
           </View>
-        )}
+        ) : null}
       </View>
       <View
-        className={`flex-row items-center bg-surface-container-highest rounded-xl px-4 py-3 border-2 ${
+        className={`items-center bg-surface-container-highest rounded-xl px-4 py-3 border-2 ${
           error ? 'border-error' : focused ? 'border-primary' : 'border-transparent'
         }`}
+        style={row}
       >
         <Ionicons
           name={icon}
           size={20}
           color={error ? '#a83836' : '#737c80'}
-          style={{ marginRight: 12 }}
+          style={{ marginEnd: 12 }}
         />
         <TextInput
           className="flex-1 text-on-surface font-semibold text-base"
+          style={inputAlign}
           placeholderTextColor="#aab3b8"
           keyboardType="numeric"
           onFocus={() => setFocused(true)}
@@ -221,42 +193,32 @@ function InputField({
         />
       </View>
       {error ? (
-        <Text className="mt-1.5 ml-1 text-xs text-error">{error}</Text>
+        <Text className="mt-1.5 ml-1 text-xs text-error" style={textAlign}>{error}</Text>
       ) : hint ? (
-        <Text className="mt-1.5 ml-1 text-xs text-on-surface-variant leading-5">{hint}</Text>
+        <Text className="mt-1.5 ml-1 text-xs text-on-surface-variant leading-5" style={textAlign}>{hint}</Text>
       ) : null}
     </View>
   );
 }
 
-// ─── ProfileSetup ─────────────────────────────────────────────────────────────
-
 export default function ProfileSetup() {
   const router = useRouter();
+  const { backIcon, formatMessage, messages, forwardIcon, row, textAlign } = useLocalization();
 
   const [step, setStep] = useState(1);
-
-  // Step 1
   const [phenotype, setPhenotype] = useState<MsPhenotype | null>(null);
-
-  // Step 2
   const [education, setEducation] = useState<string | null>(null);
-
-  // Step 3
   const [yearsDx, setYearsDx] = useState('');
   const [age, setAge] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [weightKg, setWeightKg] = useState('');
   const [edss, setEdss] = useState('');
-
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // ── Validation ──────────────────────────────────────────────────────────────
-
   function validateStep1(): boolean {
     if (!phenotype) {
-      setErrors({ phenotype: 'Please select your MS type to continue.' });
+      setErrors({ phenotype: messages.onboarding.phenotype.error });
       return false;
     }
     setErrors({});
@@ -265,7 +227,7 @@ export default function ProfileSetup() {
 
   function validateStep2(): boolean {
     if (!education) {
-      setErrors({ education: 'Please select your education level.' });
+      setErrors({ education: messages.onboarding.education.error });
       return false;
     }
     setErrors({});
@@ -276,29 +238,25 @@ export default function ProfileSetup() {
     const next: Record<string, string> = {};
 
     const yrs = parseInt(yearsDx, 10);
-    if (!yearsDx || isNaN(yrs) || yrs < 0) {
-      next.yearsDx = 'Enter a valid number of years (0 or more).';
+    if (!yearsDx || Number.isNaN(yrs) || yrs < 0) next.yearsDx = messages.onboarding.errors.yearsSinceDiagnosis;
+
+    const ageValue = parseInt(age, 10);
+    if (!age || Number.isNaN(ageValue) || ageValue < 18 || ageValue > 65) next.age = messages.onboarding.errors.age;
+
+    const heightValue = parseInt(heightCm, 10);
+    if (!heightCm || Number.isNaN(heightValue) || heightValue < 50 || heightValue > 300) {
+      next.heightCm = messages.onboarding.errors.height;
     }
 
-    const ageVal = parseInt(age, 10);
-    if (!age || isNaN(ageVal) || ageVal < 18 || ageVal > 65) {
-      next.age = 'Age must be between 18 and 65.';
-    }
-
-    const heightVal = parseInt(heightCm, 10);
-    if (!heightCm || isNaN(heightVal) || heightVal < 50 || heightVal > 300) {
-      next.heightCm = 'Enter a valid height in cm.';
-    }
-
-    const weightVal = parseFloat(weightKg);
-    if (!weightKg || isNaN(weightVal) || weightVal < 20 || weightVal > 500) {
-      next.weightKg = 'Enter a valid weight in kg.';
+    const weightValue = parseFloat(weightKg);
+    if (!weightKg || Number.isNaN(weightValue) || weightValue < 20 || weightValue > 500) {
+      next.weightKg = messages.onboarding.errors.weight;
     }
 
     if (edss) {
-      const edssVal = parseFloat(edss);
-      if (isNaN(edssVal) || edssVal < 0 || edssVal > 5.5) {
-        next.edss = 'Standard MasarMS monitoring is for ambulatory patients (EDSS 0–5.5).';
+      const edssValue = parseFloat(edss);
+      if (Number.isNaN(edssValue) || edssValue < 0 || edssValue > 5.5) {
+        next.edss = messages.onboarding.errors.edss;
       }
     }
 
@@ -306,15 +264,17 @@ export default function ProfileSetup() {
     return Object.keys(next).length === 0;
   }
 
-  // ── Navigation ───────────────────────────────────────────────────────────────
-
   function handleNext() {
-    if (step === 1) { if (validateStep1()) setStep(2); }
-    else if (step === 2) { if (validateStep2()) setStep(3); }
-    else { void handleSubmit(); }
+    if (step === 1) {
+      if (validateStep1()) setStep(2);
+      return;
+    }
+    if (step === 2) {
+      if (validateStep2()) setStep(3);
+      return;
+    }
+    void handleSubmit();
   }
-
-  // ── Submit ────────────────────────────────────────────────────────────────
 
   async function handleSubmit() {
     if (!validateStep3()) return;
@@ -325,7 +285,7 @@ export default function ProfileSetup() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setErrors({ _global: 'Session expired. Please sign in again.' });
+      setErrors({ _global: messages.onboarding.errors.sessionExpired });
       setLoading(false);
       return;
     }
@@ -333,14 +293,14 @@ export default function ProfileSetup() {
     const { error } = await supabase
       .from('profiles')
       .update({
-        ms_phenotype:          phenotype,
+        ms_phenotype: phenotype,
         years_since_diagnosis: parseInt(yearsDx, 10),
-        age:                   parseInt(age, 10),
-        height_cm:             parseInt(heightCm, 10),
-        weight_kg:             parseFloat(weightKg),
-        edss_score:            edss ? parseFloat(edss) : null,
-        education_level:       education,
-        updated_at:            new Date().toISOString(),
+        age: parseInt(age, 10),
+        height_cm: parseInt(heightCm, 10),
+        weight_kg: parseFloat(weightKg),
+        edss_score: edss ? parseFloat(edss) : null,
+        education_level: education,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
 
@@ -354,43 +314,38 @@ export default function ProfileSetup() {
     router.replace('/');
   }
 
-  // ── Progress bar ───────────────────────────────────────────────────────────
   const progressPct = (step / TOTAL_STEPS) * 100;
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
-      >
-        {/* ── Header ──────────────────────────────────────────────────────── */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <View className="px-6 pt-5 pb-4">
-          <View className="flex-row items-center justify-between mb-3">
+          <View className="items-center justify-between mb-3" style={row}>
             {step > 1 ? (
               <TouchableOpacity
-                onPress={() => { setStep(step - 1); setErrors({}); }}
+                onPress={() => {
+                  setStep(step - 1);
+                  setErrors({});
+                }}
                 hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Back to step ${step - 1}`}
+                accessibilityLabel={formatMessage(messages.onboarding.backToStep, { step: step - 1 })}
               >
-                <Ionicons name="arrow-back" size={22} color="#006880" />
+                <Ionicons name={backIcon} size={22} color="#006880" />
               </TouchableOpacity>
             ) : (
               <View className="w-6" />
             )}
 
-            <Text className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-              Step {step} of {TOTAL_STEPS}
+            <Text className="text-xs font-bold text-on-surface-variant uppercase tracking-widest" style={textAlign}>
+              {formatMessage(messages.onboarding.progress, { step, total: TOTAL_STEPS })}
             </Text>
 
             <View className="w-6" />
           </View>
 
           <View className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-            <View
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${progressPct}%` }}
-            />
+            <View className="h-full bg-primary rounded-full" style={{ width: `${progressPct}%` }} />
           </View>
         </View>
 
@@ -400,100 +355,98 @@ export default function ProfileSetup() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-
-          {/* ── Step 1: MS Type ────────────────────────────────────────────── */}
-          {step === 1 && (
+          {step === 1 ? (
             <>
-              <Text className="text-2xl font-extrabold text-on-surface mb-2">
-                What type of MS do you have?
+              <Text className="text-2xl font-extrabold text-on-surface mb-2" style={textAlign}>
+                {messages.onboarding.phenotype.title}
               </Text>
-              <Text className="text-on-surface-variant leading-relaxed mb-8 text-sm">
-                This calibrates your monitoring protocol to your specific MS course.
+              <Text className="text-on-surface-variant leading-relaxed mb-8 text-sm" style={textAlign}>
+                {messages.onboarding.phenotype.subtitle}
               </Text>
 
-              {errors.phenotype && (
-                <Text className="text-error text-sm mb-4">{errors.phenotype}</Text>
-              )}
+              {errors.phenotype ? (
+                <Text className="text-error text-sm mb-4" style={textAlign}>{errors.phenotype}</Text>
+              ) : null}
 
               <View style={{ gap: 10 }}>
-                {PHENOTYPES.map((item) => (
+                {PHENOTYPES.map((item, index) => (
                   <PhenotypeCard
                     key={item.key}
                     item={item}
+                    index={index}
                     selected={phenotype === item.key}
-                    onPress={() => { setPhenotype(item.key); setErrors({}); }}
+                    onPress={() => {
+                      setPhenotype(item.key);
+                      setErrors({});
+                    }}
                   />
                 ))}
               </View>
 
-              <View
-                className="mt-6 p-4 bg-surface-container rounded-2xl flex-row items-start"
-                style={{ gap: 12 }}
-              >
-                <Ionicons name="information-circle-outline" size={20} color="#506076" />
-                <Text className="flex-1 text-xs text-on-surface-variant leading-5">
-                  Not sure which type applies? Your neurologist can confirm this. You can
-                  update it later in your profile settings.
+              <View className="mt-6 p-4 bg-surface-container rounded-2xl items-start" style={row}>
+                <Ionicons name="information-circle-outline" size={20} color="#506076" style={{ marginEnd: 12 }} />
+                <Text className="flex-1 text-xs text-on-surface-variant leading-5" style={textAlign}>
+                  {messages.onboarding.phenotype.help}
                 </Text>
               </View>
             </>
-          )}
+          ) : null}
 
-          {/* ── Step 2: Education Level ─────────────────────────────────────── */}
-          {step === 2 && (
+          {step === 2 ? (
             <>
-              <Text className="text-2xl font-extrabold text-on-surface mb-2">
-                What is your education level?
+              <Text className="text-2xl font-extrabold text-on-surface mb-2" style={textAlign}>
+                {messages.onboarding.education.title}
               </Text>
-              <Text className="text-on-surface-variant leading-relaxed mb-8 text-sm">
-                Education level helps us calibrate your cognitive baseline — higher education
-                is associated with higher processing speed scores independent of MS.
+              <Text className="text-on-surface-variant leading-relaxed mb-8 text-sm" style={textAlign}>
+                {messages.onboarding.education.subtitle}
               </Text>
 
-              {errors.education && (
-                <Text className="text-error text-sm mb-4">{errors.education}</Text>
-              )}
+              {errors.education ? (
+                <Text className="text-error text-sm mb-4" style={textAlign}>{errors.education}</Text>
+              ) : null}
 
               <View style={{ gap: 8 }}>
-                {EDUCATION_LEVELS.map((item) => (
+                {EDUCATION_LEVELS.map((item, index) => (
                   <EducationCard
                     key={item.key}
                     item={item}
+                    index={index}
                     selected={education === item.key}
-                    onPress={() => { setEducation(item.key); setErrors({}); }}
+                    onPress={() => {
+                      setEducation(item.key);
+                      setErrors({});
+                    }}
                   />
                 ))}
               </View>
             </>
-          )}
+          ) : null}
 
-          {/* ── Step 3: Clinical & Physical Details ─────────────────────────── */}
-          {step === 3 && (
+          {step === 3 ? (
             <>
-              <Text className="text-2xl font-extrabold text-on-surface mb-2">
-                A little more about you
+              <Text className="text-2xl font-extrabold text-on-surface mb-2" style={textAlign}>
+                {messages.onboarding.details.title}
               </Text>
-              <Text className="text-on-surface-variant leading-relaxed mb-8 text-sm">
-                These details personalise your baseline. Height and weight help us flag
-                fatigue patterns linked to BMI changes over time.
+              <Text className="text-on-surface-variant leading-relaxed mb-8 text-sm" style={textAlign}>
+                {messages.onboarding.details.subtitle}
               </Text>
 
               <View style={{ gap: 20 }}>
                 <InputField
-                  label="Age"
+                  label={messages.onboarding.fields.age}
                   icon="person-outline"
-                  placeholder="Range 18–65"
+                  placeholder={messages.onboarding.placeholders.age}
                   value={age}
                   onChangeText={setAge}
                   error={errors.age}
                 />
 
-                <View className="flex-row" style={{ gap: 12 }}>
+                <View style={[row, { gap: 12 }]}>
                   <View className="flex-1">
                     <InputField
-                      label="Height (cm)"
+                      label={messages.onboarding.fields.height}
                       icon="resize-outline"
-                      placeholder="e.g. 170"
+                      placeholder={messages.onboarding.placeholders.height}
                       value={heightCm}
                       onChangeText={setHeightCm}
                       error={errors.heightCm}
@@ -501,9 +454,9 @@ export default function ProfileSetup() {
                   </View>
                   <View className="flex-1">
                     <InputField
-                      label="Weight (kg)"
+                      label={messages.onboarding.fields.weight}
                       icon="scale-outline"
-                      placeholder="e.g. 70"
+                      placeholder={messages.onboarding.placeholders.weight}
                       value={weightKg}
                       onChangeText={setWeightKg}
                       error={errors.weightKg}
@@ -512,35 +465,34 @@ export default function ProfileSetup() {
                 </View>
 
                 <InputField
-                  label="Years since diagnosis"
+                  label={messages.onboarding.fields.yearsSinceDiagnosis}
                   icon="calendar-outline"
-                  placeholder="e.g. 3"
+                  placeholder={messages.onboarding.placeholders.yearsSinceDiagnosis}
                   value={yearsDx}
                   onChangeText={setYearsDx}
                   error={errors.yearsDx}
-                  hint="Enter 0 if you were recently diagnosed."
+                  hint={messages.onboarding.hints.yearsSinceDiagnosis}
                 />
 
                 <InputField
-                  label="EDSS Score"
+                  label={messages.onboarding.fields.edssScore}
                   icon="analytics-outline"
                   optional
-                  placeholder="0.0 – 10.0"
+                  placeholder={messages.onboarding.placeholders.edss}
                   value={edss}
                   onChangeText={setEdss}
                   error={errors.edss}
-                  hint="Expanded Disability Status Scale — your neurologist can provide this. Leave blank if unknown."
+                  hint={messages.onboarding.hints.edss}
                 />
               </View>
 
-              {errors._global && (
-                <Text className="text-error text-sm text-center mt-6">{errors._global}</Text>
-              )}
+              {errors._global ? (
+                <Text className="text-error text-sm text-center mt-6" style={textAlign}>{errors._global}</Text>
+              ) : null}
             </>
-          )}
+          ) : null}
         </ScrollView>
 
-        {/* ── Fixed CTA ───────────────────────────────────────────────────── */}
         <View
           className="absolute bottom-0 left-0 right-0 px-6 pb-10 pt-4 bg-surface"
           style={{ borderTopWidth: 1, borderTopColor: 'rgba(170,179,184,0.2)' }}
@@ -548,21 +500,21 @@ export default function ProfileSetup() {
           <TouchableOpacity
             onPress={handleNext}
             disabled={loading}
-            className="w-full bg-primary rounded-full py-5 flex-row items-center justify-center"
-            style={{ gap: 10, opacity: loading ? 0.7 : 1 }}
+            className="w-full bg-primary rounded-full py-5 items-center justify-center"
+            style={[row, { gap: 10, opacity: loading ? 0.7 : 1 }]}
             accessibilityRole="button"
-            accessibilityLabel={step < TOTAL_STEPS ? 'Next step' : 'Complete setup'}
+            accessibilityLabel={step < TOTAL_STEPS ? messages.onboarding.nextStep : messages.onboarding.completeSetupA11y}
           >
             {loading ? (
               <ActivityIndicator color="#f1faff" />
             ) : (
               <>
                 <Text className="text-on-primary font-bold text-lg">
-                  {step < TOTAL_STEPS ? 'Continue' : 'Complete Setup'}
+                  {step < TOTAL_STEPS ? messages.common.continue : messages.onboarding.completeSetup}
                 </Text>
-                {step < TOTAL_STEPS && (
-                  <Ionicons name="arrow-forward" size={20} color="#f1faff" />
-                )}
+                {step < TOTAL_STEPS ? (
+                  <Ionicons name={forwardIcon} size={20} color="#f1faff" />
+                ) : null}
               </>
             )}
           </TouchableOpacity>

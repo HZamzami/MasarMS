@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { CountdownOverlay } from '../../lib/CountdownOverlay';
+import { useLocalization } from '../../lib/i18n';
 import {
   Accelerometer,
   Gyroscope,
@@ -64,6 +65,7 @@ function extractErrorMessage(error: unknown) {
 
 export default function MobilityTestScreen() {
   const router = useRouter();
+  const { backIcon, formatMessage, messages } = useLocalization();
 
   const [testState, setTestState] = useState<TestState>('PREPARE');
   const [activeRemainingMs, setActiveRemainingMs] = useState(ACTIVE_DURATION_MS);
@@ -375,7 +377,7 @@ export default function MobilityTestScreen() {
     <View className="flex-1 items-center justify-between py-10 px-6">
       <View className="items-center">
         <Text className="text-sm uppercase tracking-[5px] text-on-surface-variant mb-2">
-          Remaining Time
+          {messages.common.timeRemaining}
         </Text>
         <Text className="text-[88px] leading-[92px] font-extrabold text-primary tracking-tight">
           {activeTimerLabel}
@@ -409,20 +411,20 @@ export default function MobilityTestScreen() {
           </View>
         </View>
         <View className="mt-7 bg-[#65fde6]/35 px-8 py-2 rounded-full">
-          <Text className="text-tertiary text-[36px] font-bold tracking-wide uppercase">Walking</Text>
+          <Text className="text-tertiary text-[36px] font-bold tracking-wide uppercase">{messages.mobility.walking}</Text>
         </View>
       </View>
 
       <View className="items-center max-w-[340px]">
         <Text className="text-center text-[44px] leading-[50px] font-bold text-on-surface">
-          Keep your phone in your pocket or hold it steady
+          {messages.mobility.holdPhoneTitle}
         </Text>
         <Text className="text-center text-[34px] leading-[42px] text-on-surface-variant mt-4">
-          Maintain a consistent pace on a flat surface.
+          {messages.mobility.holdPhoneBody}
         </Text>
         {sensorUnavailable ? (
           <Text className="text-center text-sm text-error mt-4">
-            Motion sensors are unavailable on this device/browser. Timing still works, but motion metrics may be zero.
+            {messages.mobility.sensorUnavailable}
           </Text>
         ) : null}
       </View>
@@ -443,12 +445,12 @@ export default function MobilityTestScreen() {
           transitionToSaving();
         }}
         accessibilityRole="button"
-        accessibilityLabel="Stop mobility test"
+        accessibilityLabel={messages.mobility.stopA11y}
       >
         <View className="flex-row items-center" style={{ gap: 12 }}>
           <Ionicons name="stop-circle" size={34} color="#fff7f6" />
           <Text className="text-on-error text-[44px] leading-[48px] font-extrabold tracking-[4px] uppercase">
-            STOP
+            {messages.mobility.stop}
           </Text>
         </View>
       </TouchableOpacity>
@@ -459,10 +461,10 @@ export default function MobilityTestScreen() {
     <View className="flex-1 items-center justify-center px-8">
       <ActivityIndicator size="large" color="#006880" />
       <Text className="text-xl font-semibold text-on-surface mt-4">
-        Saving your mobility results...
+        {messages.mobility.savingTitle}
       </Text>
       <Text className="text-sm text-on-surface-variant mt-2 text-center">
-        Please keep the app open for a moment.
+        {messages.mobility.savingBody}
       </Text>
     </View>
   );
@@ -475,7 +477,7 @@ export default function MobilityTestScreen() {
     return (
       <View className="flex-1 px-6 pt-8 pb-6">
         <Text className="text-[52px] leading-[56px] font-extrabold text-on-surface-variant mb-4">
-          Test Summary
+          {messages.mobility.summaryTitle}
         </Text>
 
         <View className="bg-[#72d9fd]/30 rounded-xl p-5 flex-row items-center mb-6" style={{ gap: 12 }}>
@@ -483,16 +485,16 @@ export default function MobilityTestScreen() {
             <Ionicons name="checkmark-circle" size={28} color="#e2fff8" />
           </View>
           <View className="flex-1">
-            <Text className="text-primary font-bold text-lg">Great job!</Text>
+            <Text className="text-primary font-bold text-lg">{messages.mobility.successTitle}</Text>
             <Text className="text-on-surface-variant text-sm">
-              Your mobility assessment was recorded successfully.
+              {messages.mobility.successBody}
             </Text>
           </View>
         </View>
 
         <View className="bg-surface-container-low rounded-[24px] p-6 mb-4">
           <Text className="text-xs uppercase tracking-[2px] text-on-surface-variant">
-            U-Turn Count
+            {messages.mobility.uTurnCount}
           </Text>
           <Text className="text-[56px] leading-[62px] font-extrabold text-primary mt-2">
             {uTurnCount}
@@ -501,7 +503,7 @@ export default function MobilityTestScreen() {
 
         <View className="bg-surface-container-low rounded-[24px] p-6 mb-4 items-center">
           <Text className="text-xs uppercase tracking-[2px] text-on-surface-variant mb-4">
-            Average Acceleration
+            {messages.mobility.averageAcceleration}
           </Text>
           <View className="w-36 h-36 rounded-full border-[10px] border-tertiary items-center justify-center">
             <Text className="text-2xl font-extrabold text-on-surface">
@@ -512,17 +514,19 @@ export default function MobilityTestScreen() {
         </View>
 
         <View className="bg-surface-container-lowest rounded-[24px] p-6 mb-8 border border-outline-variant/20">
-          <Text className="text-lg font-bold text-on-surface mb-2">Performance Insights</Text>
+          <Text className="text-lg font-bold text-on-surface mb-2">{messages.mobility.performanceInsights}</Text>
           <Text className="text-sm text-on-surface-variant">
-            Session length: {durationSeconds.toFixed(1)}s
+            {formatMessage(messages.mobility.sessionLength, {
+              seconds: durationSeconds.toFixed(1),
+            })}
           </Text>
           {saveError ? (
             <Text className="text-xs text-error mt-3">
-              Saved locally only: {saveError}
+              {formatMessage(messages.mobility.savedLocallyOnly, { error: saveError })}
             </Text>
           ) : (
             <Text className="text-xs text-tertiary mt-3">
-              Observation saved.
+              {messages.mobility.observationSaved}
             </Text>
           )}
         </View>
@@ -538,9 +542,9 @@ export default function MobilityTestScreen() {
           }}
           onPress={() => router.replace('/')}
           accessibilityRole="button"
-          accessibilityLabel="Back to dashboard"
+          accessibilityLabel={messages.common.backToDashboard}
         >
-          <Text className="text-on-primary font-bold text-base">Back to Dashboard</Text>
+          <Text className="text-on-primary font-bold text-base">{messages.common.backToDashboard}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -554,16 +558,16 @@ export default function MobilityTestScreen() {
             onPress={() => router.back()}
             hitSlop={20}
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={messages.common.back}
           >
-            <Ionicons name="arrow-back" size={24} color="#006880" />
+            <Ionicons name={backIcon} size={24} color="#006880" />
           </TouchableOpacity>
-          <Text className="font-bold text-lg text-primary">Masar MS</Text>
+          <Text className="font-bold text-lg text-primary">{messages.common.appName}</Text>
         </View>
 
         {testState !== 'SUMMARY' ? (
           <View className="px-3 py-1 rounded-full bg-[#006880]/10">
-            <Text className="text-xs font-semibold text-primary">Mobility Assessment</Text>
+            <Text className="text-xs font-semibold text-primary">{messages.mobility.title}</Text>
           </View>
         ) : (
           <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center">

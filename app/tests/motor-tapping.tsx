@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { CountdownOverlay } from '../../lib/CountdownOverlay';
+import { useLocalization } from '../../lib/i18n';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { FingerTappingData } from '../../lib/types';
 
@@ -42,6 +44,7 @@ function computeMetrics(taps: TapSample[]) {
 
 export default function MotorTappingTaskScreen() {
   const router = useRouter();
+  const { backIcon, formatMessage, formatNumber, messages } = useLocalization();
 
   const [testMode, setTestMode]       = useState<'selection' | 'countdown' | 'running'>('selection');
   const [dominantHand, setDominantHand] = useState<boolean | null>(null);
@@ -78,13 +81,13 @@ export default function MotorTappingTaskScreen() {
 
       router.replace('/');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Save failed.';
+      const msg = err instanceof Error ? err.message : messages.common.saveFailed;
       setSaveError(msg.toLowerCase().includes('schema cache')
-        ? 'Database table not found. Apply migration 003_unified_schema.sql, then retry.'
+        ? messages.common.saveFailed
         : msg);
       setStatus('error');
     }
-  }, [router, dominantHand]);
+  }, [router, dominantHand, messages.common.saveFailed]);
 
   useEffect(() => {
     if (testMode !== 'running') return;
@@ -137,10 +140,10 @@ export default function MotorTappingTaskScreen() {
             <Ionicons name="hand-left-outline" size={44} color="#006880" />
           </View>
           <Text className="text-2xl font-extrabold text-on-surface text-center mb-4">
-            Select Hand
+            {messages.common.selectHand}
           </Text>
           <Text className="text-on-surface-variant text-center leading-relaxed mb-10">
-            Which hand will you be using for this 10-second tapping assessment?
+            {messages.motorTapping.selectionBody}
           </Text>
           
           <View style={{ gap: 12 }} className="mb-10">
@@ -151,7 +154,7 @@ export default function MotorTappingTaskScreen() {
               <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mr-4">
                 <Ionicons name="star" size={20} color="#f1faff" />
               </View>
-              <Text className="text-lg font-bold text-on-surface">Dominant Hand</Text>
+              <Text className="text-lg font-bold text-on-surface">{messages.common.dominantHand}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -161,12 +164,12 @@ export default function MotorTappingTaskScreen() {
               <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center mr-4">
                 <Ionicons name="hand-right-outline" size={20} color="#576065" />
               </View>
-              <Text className="text-lg font-bold text-on-surface">Non-Dominant Hand</Text>
+              <Text className="text-lg font-bold text-on-surface">{messages.common.nonDominantHand}</Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity onPress={() => router.back()} className="items-center">
-            <Text className="text-on-surface-variant font-bold">Cancel</Text>
+            <Text className="text-on-surface-variant font-bold">{messages.common.cancel}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -192,17 +195,20 @@ export default function MotorTappingTaskScreen() {
                 className="w-10 h-10 rounded-full items-center justify-center"
                 onPress={() => router.back()}
                 accessibilityRole="button"
-                accessibilityLabel="Go back"
+                accessibilityLabel={messages.motorTapping.goBackA11y}
                 hitSlop={20}
               >
-                <Ionicons name="arrow-back" size={24} color="#006880" />
+                <Ionicons name={backIcon} size={24} color="#006880" />
               </Pressable>
-              <Text className="text-xl font-bold text-on-surface">Finger Tapping</Text>
+              <Text className="text-xl font-bold text-on-surface">{messages.motorTapping.title}</Text>
             </View>
 
             <View className="bg-surface-container px-3 py-1.5 rounded-full">
               <Text className="text-xs font-bold text-on-surface-variant">
-                {tapCount} taps · {dominantHand ? 'Dom' : 'Non-Dom'}
+                {formatMessage(messages.motorTapping.tapsBadge, {
+                  count: formatNumber(tapCount),
+                  hand: dominantHand ? messages.motorTapping.dominantShort : messages.motorTapping.nonDominantShort,
+                })}
               </Text>
             </View>
           </View>
@@ -212,7 +218,7 @@ export default function MotorTappingTaskScreen() {
             <View className="flex-row items-center" style={{ gap: 8 }}>
               <Ionicons name="timer-outline" size={16} color="#006880" />
               <Text className="text-sm font-semibold tracking-widest uppercase text-on-surface-variant">
-                Time Remaining
+                {messages.common.timeRemaining}
               </Text>
             </View>
             <Text className="mt-2 font-extrabold text-primary" style={{ fontSize: 64, lineHeight: 72 }}>
@@ -231,11 +237,10 @@ export default function MotorTappingTaskScreen() {
           {/* Instructions */}
           <View className="items-center mt-8">
             <Text className="text-xl font-bold text-on-surface mb-2">
-              Tap as fast as you can
+              {messages.motorTapping.instructionTitle}
             </Text>
             <Text className="text-center text-on-surface-variant text-sm leading-6 px-4">
-              Use your <Text className="font-bold text-primary">index finger</Text> to tap
-              the button below repeatedly for 10 seconds.
+              {messages.motorTapping.instructionBody}
             </Text>
           </View>
 
@@ -246,7 +251,7 @@ export default function MotorTappingTaskScreen() {
               onPressIn={handleTap}
               hitSlop={24}
               accessibilityRole="button"
-              accessibilityLabel="Tap here"
+              accessibilityLabel={messages.motorTapping.tapHereA11y}
               style={({ pressed }) => ({
                 width: 180,
                 height: 180,
@@ -277,14 +282,16 @@ export default function MotorTappingTaskScreen() {
               <Ionicons name="information-circle" size={16} color="#e2fff8" />
             </View>
             <Text className="flex-1 text-sm font-medium text-on-tertiary-container">
-              Rest your wrist on a flat surface. Tap with your {dominantHand ? 'dominant' : 'non-dominant'} hand's index finger.
+              {formatMessage(messages.motorTapping.tipBody, {
+                hand: dominantHand ? messages.motorTapping.dominantWord : messages.motorTapping.nonDominantWord,
+              })}
             </Text>
           </View>
 
           {/* Status messages */}
           {status === 'saving' && (
             <View className="items-center mt-4">
-              <Text className="text-sm text-primary">Saving result…</Text>
+              <Text className="text-sm text-primary">{messages.motorTapping.savingResult}</Text>
             </View>
           )}
           {status === 'error' && (
@@ -295,7 +302,7 @@ export default function MotorTappingTaskScreen() {
                 onPress={() => void persistObservation()}
                 hitSlop={20}
               >
-                <Text className="text-on-primary font-semibold">Retry Save</Text>
+                <Text className="text-on-primary font-semibold">{messages.motorTapping.retrySave}</Text>
               </Pressable>
             </View>
           )}

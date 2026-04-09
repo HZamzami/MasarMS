@@ -1,8 +1,11 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform, View, Text } from "react-native";
+import { Platform } from "react-native";
+import { useLocalization } from "../../lib/i18n";
 
 export default function AppLayout() {
+  const { isRTL, messages } = useLocalization();
+
   return (
     <Tabs
       screenOptions={{
@@ -27,13 +30,14 @@ export default function AppLayout() {
           textTransform: "uppercase",
           letterSpacing: 0.5,
           marginTop: 4,
+          writingDirection: isRTL ? 'rtl' : 'ltr',
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: messages.tabs.home,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
           ),
@@ -42,7 +46,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="trends"
         options={{
-          title: "Trends",
+          title: messages.tabs.trends,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "trending-up" : "trending-up-outline"} size={24} color={color} />
           ),
@@ -51,7 +55,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
+          title: messages.tabs.history,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "time" : "time-outline"} size={24} color={color} />
           ),
@@ -60,7 +64,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: messages.tabs.profile,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
           ),
