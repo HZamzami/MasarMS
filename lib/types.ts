@@ -15,7 +15,7 @@ export type MonitoringPhase = 'baseline' | 'longitudinal';
 
 export interface Profile {
   id: string;
-  ms_phenotype: 'RRMS' | 'SPMS' | 'PPMS' | 'PRMS' | null;
+  ms_phenotype: 'RRMS' | 'SPMS' | 'PPMS' | null;
   baseline_completed_at: string | null;
   /** Years elapsed since MS diagnosis. Set during onboarding. */
   years_since_diagnosis: number | null;
@@ -23,6 +23,12 @@ export interface Profile {
   edss_score: number | null;
   /** Patient age (18–65). Set during onboarding. */
   age: number | null;
+  /** Height in centimetres. Set during onboarding. */
+  height_cm: number | null;
+  /** Weight in kilograms. Set during onboarding. */
+  weight_kg: number | null;
+  /** Highest education level attained. Set during onboarding. */
+  education_level: string | null;
   /** Auto-set at signup — serves as enrolled_at for the 84-day baseline countdown. */
   created_at: string;
   updated_at: string;

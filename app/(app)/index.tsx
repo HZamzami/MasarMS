@@ -692,7 +692,7 @@ export default function HomeScreen() {
               <View className="flex-row" style={{ gap: 12 }}>
                 <BiomarkerCard
                   domainLabel="Cognitive"
-                  title="Brain Speed"
+                  title="Processing Speed"
                   icon={{ type: 'mci', name: 'brain' }}
                   metric={esdmtMetric}
                   unit="pts"
