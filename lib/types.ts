@@ -118,18 +118,20 @@ export interface BaselineStats {
   sampleCount: number;
 }
 
+export type TestStatus = 'due' | 'overdue' | 'completed' | 'upcoming';
+
 export interface TestScheduleItem {
   testType: string;
   domain: MsDomain;
   label: string;
   route: string;
-  /** Target frequency in days (1 = daily, 7 = weekly, 14 = biweekly) */
+  /** Target frequency in days for the current phase */
   intervalDays: number;
   lastCompletedAt: string | null;
   /** Negative value means overdue */
   daysUntilDue: number;
-  isDueToday: boolean;
-  isOverdue: boolean;
+  status: TestStatus;
+  nextAvailableAt: string;
 }
 
 export type DeclineSeverity = 'none' | 'concern' | 'alert';

@@ -1,35 +1,103 @@
 import { supabase } from './supabase';
-import type { MsDomain, TestScheduleItem } from './types';
+import type { MsDomain, TestScheduleItem, TestStatus } from './types';
 
 // ─── Protocol config ──────────────────────────────────────────────────────────
+
+const BASELINE_WINDOW_MS = 12 * 7 * 24 * 60 * 60 * 1000; // 84 days
+const MS_PER_DAY = 86_400_000;
 
 interface ScheduleConfig {
   testType: string;
   domain: MsDomain;
   label: string;
   route: string;
-  intervalDays: number;
+  baselineIntervalDays: number;
+  longitudinalIntervalDays: number;
 }
 
+/**
+ * Aligns with Section 8:
+ * - Daily: EMA
+ * - Weekly: eSDMT + One Motor (Tapping & Pinch/Drag both weekly for simplicity)
+ * - Biweekly: Mobility (2MWT) + Vision
+ * - Monthly: MSIS29
+ * 
+ * During Baseline: All Active tests (everything except EMA/MSIS29) are 3x/week.
+ */
 export const SCHEDULE_CONFIG: ReadonlyArray<ScheduleConfig> = [
-  { testType: 'DailyEMA',            domain: 'mood',          label: 'Daily Check-in',  route: '/tests/daily-checkin',  intervalDays: 1  },
-  { testType: 'eSDMT',               domain: 'cognitive',     label: 'Cognitive',        route: '/tests/esdmt',          intervalDays: 7  },
-  { testType: 'FingerTapping',       domain: 'motor',         label: 'Motor Tapping',    route: '/tests/motor-tapping',  intervalDays: 7  },
-  { testType: 'PinchDrag',           domain: 'motor',         label: 'Pinch & Drag',     route: '/tests/pinch-drag',     intervalDays: 7  },
-  { testType: '2MWT',                domain: 'mobility',      label: 'Mobility',         route: '/tests/mobility',       intervalDays: 14 },
-  { testType: 'ContrastSensitivity', domain: 'physiological', label: 'Vision',           route: '/tests/vision',         intervalDays: 14 },
-  { testType: 'MSIS29',              domain: 'mood',          label: 'QoL Survey',       route: '/tests/msis29',         intervalDays: 30 },
+  { 
+    testType: 'DailyEMA',            
+    domain: 'mood',          
+    label: 'Daily Mood Check-in', 
+    route: '/tests/daily-checkin',  
+    baselineIntervalDays: 1, 
+    longitudinalIntervalDays: 1 
+  },
+  { 
+    testType: 'eSDMT',               
+    domain: 'cognitive',     
+    label: 'Cognitive (eSDMT)',       
+    route: '/tests/esdmt',          
+    baselineIntervalDays: 2.33, // 3x per week
+    longitudinalIntervalDays: 7 
+  },
+  { 
+    testType: 'FingerTapping',       
+    domain: 'motor',         
+    label: 'Hand Dexterity (Tapping)',   
+    route: '/tests/motor-tapping',  
+    baselineIntervalDays: 2.33, 
+    longitudinalIntervalDays: 7 
+  },
+  { 
+    testType: 'PinchDrag',           
+    domain: 'motor',         
+    label: 'Fine Control (Pinch)',    
+    route: '/tests/pinch-drag',     
+    baselineIntervalDays: 2.33, 
+    longitudinalIntervalDays: 7 
+  },
+  { 
+    testType: '2MWT',                
+    domain: 'mobility',      
+    label: 'Mobility (2MWT)',         
+    route: '/tests/mobility',       
+    baselineIntervalDays: 2.33, 
+    longitudinalIntervalDays: 14 
+  },
+  { 
+    testType: 'ContrastSensitivity', 
+    domain: 'physiological', 
+    label: 'Vision (Contrast)',           
+    route: '/tests/vision',         
+    baselineIntervalDays: 2.33, 
+    longitudinalIntervalDays: 14 
+  },
+  { 
+    testType: 'MSIS29',              
+    domain: 'mood',          
+    label: 'Impact Survey (MSIS29)',      
+    route: '/tests/msis29',         
+    baselineIntervalDays: 30, 
+    longitudinalIntervalDays: 30 
+  },
 ] as const;
 
 // ─── Schedule computation ─────────────────────────────────────────────────────
 
-/**
- * Returns the full test schedule for a user with due/overdue state computed.
- * Uses a single GROUP BY query — not N separate queries.
- */
 export async function getTestSchedule(userId: string): Promise<TestScheduleItem[]> {
-  const testTypes = SCHEDULE_CONFIG.map((c) => c.testType);
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('created_at')
+    .eq('id', userId)
+    .single();
 
+  const enrolledAt = profile?.created_at ? new Date(profile.created_at).getTime() : Date.now();
+  const now = Date.now();
+  const daysSinceEnrolled = (now - enrolledAt) / MS_PER_DAY;
+  const isBaselinePhase = daysSinceEnrolled < 84; // 12 weeks
+
+  const testTypes = SCHEDULE_CONFIG.map((c) => c.testType);
   const { data: rows } = await supabase
     .from('test_results')
     .select('test_type, created_at')
@@ -37,7 +105,6 @@ export async function getTestSchedule(userId: string): Promise<TestScheduleItem[
     .in('test_type', testTypes)
     .order('created_at', { ascending: false });
 
-  // Build a map: testType → most recent created_at
   const lastCompletedMap = new Map<string, string>();
   if (rows) {
     for (const row of rows) {
@@ -47,38 +114,57 @@ export async function getTestSchedule(userId: string): Promise<TestScheduleItem[
     }
   }
 
-  const now = Date.now();
-  const MS_PER_DAY = 86_400_000;
-
   return SCHEDULE_CONFIG.map((cfg) => {
     const lastCompletedAt = lastCompletedMap.get(cfg.testType) ?? null;
+    const intervalDays = isBaselinePhase ? cfg.baselineIntervalDays : cfg.longitudinalIntervalDays;
+    
+    // Calculate days until next test is due
+    let daysUntilDue = 0;
+    if (lastCompletedAt) {
+      const msSinceLast = now - new Date(lastCompletedAt).getTime();
+      const daysSinceLast = msSinceLast / MS_PER_DAY;
+      daysUntilDue = intervalDays - daysSinceLast;
+    }
 
-    // A test that has never been done is not "overdue" — the clock hasn't
-    // started yet. We treat it as having the full interval ahead so no
-    // badges render on day 1.
-    const neverDone = lastCompletedAt === null;
+    // Determine status
+    let status: TestStatus = 'due';
+    if (!lastCompletedAt) {
+      status = 'due'; // Never done, so it's due
+    } else if (daysUntilDue <= 0) {
+      status = daysUntilDue < -1 ? 'overdue' : 'due';
+    } else if (daysUntilDue > 0) {
+      // If it's done within the current day (or within 24h for daily tasks)
+      // we mark it as completed.
+      const lastCompletedDate = new Date(lastCompletedAt);
+      const today = new Date();
+      const doneToday = 
+        lastCompletedDate.getDate() === today.getDate() &&
+        lastCompletedDate.getMonth() === today.getMonth() &&
+        lastCompletedDate.getFullYear() === today.getFullYear();
+      
+      // For non-daily tests, if it's done within the interval, it's upcoming
+      if (intervalDays > 1) {
+        status = 'upcoming';
+      } else {
+        // For daily tests, if done today, it's completed
+        status = doneToday ? 'completed' : 'due';
+      }
+    }
 
-    const daysSinceLast = neverDone
-      ? null
-      : Math.floor((now - new Date(lastCompletedAt!).getTime()) / MS_PER_DAY);
-
-    const daysUntilDue = daysSinceLast === null
-      ? cfg.intervalDays
-      : cfg.intervalDays - daysSinceLast;
-
-    const isDueToday = !neverDone && daysUntilDue <= 0 && daysUntilDue > -1;
-    const isOverdue  = !neverDone && daysUntilDue < 0;
+    const nextAvailableAt = lastCompletedAt 
+      ? new Date(new Date(lastCompletedAt).getTime() + (intervalDays * MS_PER_DAY)).toISOString()
+      : new Date().toISOString();
 
     return {
       testType: cfg.testType,
       domain: cfg.domain,
       label: cfg.label,
       route: cfg.route,
-      intervalDays: cfg.intervalDays,
+      intervalDays,
       lastCompletedAt,
       daysUntilDue,
-      isDueToday,
-      isOverdue,
+      status,
+      nextAvailableAt,
     };
   });
 }
