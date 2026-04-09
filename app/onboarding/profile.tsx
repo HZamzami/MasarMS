@@ -57,11 +57,11 @@ const PHENOTYPES: Array<{
 // higher education correlates with better eSDMT performance independent of MS.
 
 const EDUCATION_LEVELS: Array<{ key: string; label: string; icon: IoniconName }> = [
-  { key: 'less_than_high_school', label: 'Less than high school',  icon: 'school-outline'    },
-  { key: 'high_school',           label: 'High school / GED',      icon: 'ribbon-outline'     },
-  { key: 'some_college',          label: 'Some college',           icon: 'book-outline'       },
-  { key: 'bachelor',              label: "Bachelor's degree",      icon: 'library-outline'    },
-  { key: 'graduate',              label: 'Graduate degree',        icon: 'trophy-outline'     },
+  { key: 'primary',           label: 'Primary / Middle School',  icon: 'school-outline'     },
+  { key: 'high_school',       label: 'High School / GED',        icon: 'ribbon-outline'     },
+  { key: 'vocational',        label: 'Vocational / Technical',   icon: 'hammer-outline'     },
+  { key: 'bachelor',          label: "Bachelor's Degree",        icon: 'library-outline'    },
+  { key: 'graduate_plus',     label: 'Master / PhD / MD',        icon: 'trophy-outline'     },
 ];
 
 // ─── PhenotypeCard ────────────────────────────────────────────────────────────
