@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { CountdownOverlay } from '../../lib/CountdownOverlay';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { PinchDragData } from '../../lib/types';
 
@@ -29,7 +30,7 @@ interface TrialResult {
   success: boolean;      // landed within TARGET_RADIUS
 }
 
-type ScreenState = 'instructions' | 'running' | 'saving' | 'error' | 'done';
+type ScreenState = 'instructions' | 'selection' | 'countdown' | 'running' | 'saving' | 'error' | 'done';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -154,6 +155,7 @@ export default function PinchDragScreen() {
   const { width, height } = useWindowDimensions();
 
   const [screenState, setScreenState] = useState<ScreenState>('instructions');
+  const [dominantHand, setDominantHand] = useState<boolean | null>(null);
   const [trialIndex, setTrialIndex] = useState(0);
   const [trials, setTrials] = useState<TrialResult[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -268,7 +270,7 @@ export default function PinchDragScreen() {
           median_time_ms:   r1(median(times)),
           miss_count:       finalTrials.length - successes,
           accuracy_pct:     r1((successes / finalTrials.length) * 100),
-          dominant_hand:    null,
+          dominant_hand:    dominantHand,
           test_version:     '1.0',
         } satisfies PinchDragData,
       });
@@ -334,6 +336,82 @@ export default function PinchDragScreen() {
         <ResultCard trials={trials} onDone={() => router.replace('/')} />
       )}
 
+      {/* Countdown */}
+      {screenState === 'countdown' && (
+        <View className="flex-1">
+          {/* We render the running UI behind the countdown */}
+          <View className="flex-1 opacity-40">
+            {/* Target ring */}
+            <View
+              style={{
+                position: 'absolute',
+                left: width / 2 - TARGET_RADIUS,
+                top: height / 4 - TARGET_RADIUS,
+                width: TARGET_RADIUS * 2,
+                height: TARGET_RADIUS * 2,
+                borderRadius: TARGET_RADIUS,
+                borderWidth: 2.5,
+                borderColor: '#006880',
+              }}
+            />
+            {/* Draggable token */}
+            <View
+              style={{
+                position: 'absolute',
+                left: tokenStartX,
+                top: tokenStartY,
+                width: TOKEN_SIZE,
+                height: TOKEN_SIZE,
+                borderRadius: TOKEN_SIZE / 2,
+                backgroundColor: '#006880',
+              }}
+            />
+          </View>
+          <CountdownOverlay onFinished={() => setScreenState('running')} />
+        </View>
+      )}
+
+      {/* Selection */}
+      {screenState === 'selection' && (
+        <View className="flex-1 px-8 justify-center">
+          <View className="w-20 h-20 rounded-3xl bg-primary-container items-center justify-center mb-8 self-center">
+            <Ionicons name="hand-left-outline" size={44} color="#006880" />
+          </View>
+          <Text className="text-2xl font-extrabold text-on-surface text-center mb-4">
+            Select Hand
+          </Text>
+          <Text className="text-on-surface-variant text-center leading-relaxed mb-10">
+            Which hand will you be using for this 10-trial precision assessment?
+          </Text>
+          
+          <View style={{ gap: 12 }} className="mb-10">
+            <TouchableOpacity
+              onPress={() => { setDominantHand(true); setScreenState('countdown'); }}
+              className="w-full bg-surface-container-low border-2 border-primary/20 rounded-2xl p-5 flex-row items-center"
+            >
+              <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mr-4">
+                <Ionicons name="star" size={20} color="#f1faff" />
+              </View>
+              <Text className="text-lg font-bold text-on-surface">Dominant Hand</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => { setDominantHand(false); setScreenState('countdown'); }}
+              className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-2xl p-5 flex-row items-center"
+            >
+              <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center mr-4">
+                <Ionicons name="hand-right-outline" size={20} color="#576065" />
+              </View>
+              <Text className="text-lg font-bold text-on-surface">Non-Dominant Hand</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity onPress={() => setScreenState('instructions')} className="items-center">
+            <Text className="text-on-surface-variant font-bold">Back</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Instructions */}
       {screenState === 'instructions' && (
         <View className="flex-1 px-8 justify-center">
@@ -366,7 +444,7 @@ export default function PinchDragScreen() {
             ))}
           </View>
           <TouchableOpacity
-            onPress={() => setScreenState('running')}
+            onPress={() => setScreenState('selection')}
             className="w-full bg-primary rounded-full py-5 items-center"
           >
             <Text className="text-on-primary font-bold text-lg">Start Test</Text>

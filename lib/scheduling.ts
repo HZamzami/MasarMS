@@ -13,6 +13,7 @@ interface ScheduleConfig {
   route: string;
   baselineIntervalDays: number;
   longitudinalIntervalDays: number;
+  frequencyLabel: 'Daily' | 'Weekly' | 'Biweekly' | 'Monthly';
 }
 
 /**
@@ -31,15 +32,17 @@ export const SCHEDULE_CONFIG: ReadonlyArray<ScheduleConfig> = [
     label: 'Daily Mood Check-in', 
     route: '/tests/daily-checkin',  
     baselineIntervalDays: 1, 
-    longitudinalIntervalDays: 1 
+    longitudinalIntervalDays: 1,
+    frequencyLabel: 'Daily'
   },
   { 
     testType: 'eSDMT',               
     domain: 'cognitive',     
     label: 'Cognitive (eSDMT)',       
     route: '/tests/esdmt',          
-    baselineIntervalDays: 2.33, // 3x per week
-    longitudinalIntervalDays: 7 
+    baselineIntervalDays: 2.33, 
+    longitudinalIntervalDays: 7,
+    frequencyLabel: 'Weekly'
   },
   { 
     testType: 'FingerTapping',       
@@ -47,7 +50,8 @@ export const SCHEDULE_CONFIG: ReadonlyArray<ScheduleConfig> = [
     label: 'Hand Dexterity (Tapping)',   
     route: '/tests/motor-tapping',  
     baselineIntervalDays: 2.33, 
-    longitudinalIntervalDays: 7 
+    longitudinalIntervalDays: 7,
+    frequencyLabel: 'Weekly'
   },
   { 
     testType: 'PinchDrag',           
@@ -55,7 +59,8 @@ export const SCHEDULE_CONFIG: ReadonlyArray<ScheduleConfig> = [
     label: 'Fine Control (Pinch)',    
     route: '/tests/pinch-drag',     
     baselineIntervalDays: 2.33, 
-    longitudinalIntervalDays: 7 
+    longitudinalIntervalDays: 7,
+    frequencyLabel: 'Weekly'
   },
   { 
     testType: '2MWT',                
@@ -63,7 +68,8 @@ export const SCHEDULE_CONFIG: ReadonlyArray<ScheduleConfig> = [
     label: 'Mobility (2MWT)',         
     route: '/tests/mobility',       
     baselineIntervalDays: 2.33, 
-    longitudinalIntervalDays: 14 
+    longitudinalIntervalDays: 14,
+    frequencyLabel: 'Biweekly'
   },
   { 
     testType: 'ContrastSensitivity', 
@@ -71,7 +77,8 @@ export const SCHEDULE_CONFIG: ReadonlyArray<ScheduleConfig> = [
     label: 'Vision (Contrast)',           
     route: '/tests/vision',         
     baselineIntervalDays: 2.33, 
-    longitudinalIntervalDays: 14 
+    longitudinalIntervalDays: 14,
+    frequencyLabel: 'Biweekly'
   },
   { 
     testType: 'MSIS29',              
@@ -79,7 +86,8 @@ export const SCHEDULE_CONFIG: ReadonlyArray<ScheduleConfig> = [
     label: 'Impact Survey (MSIS29)',      
     route: '/tests/msis29',         
     baselineIntervalDays: 30, 
-    longitudinalIntervalDays: 30 
+    longitudinalIntervalDays: 30,
+    frequencyLabel: 'Monthly'
   },
 ] as const;
 
@@ -118,7 +126,6 @@ export async function getTestSchedule(userId: string): Promise<TestScheduleItem[
     const lastCompletedAt = lastCompletedMap.get(cfg.testType) ?? null;
     const intervalDays = isBaselinePhase ? cfg.baselineIntervalDays : cfg.longitudinalIntervalDays;
     
-    // Calculate days until next test is due
     let daysUntilDue = 0;
     if (lastCompletedAt) {
       const msSinceLast = now - new Date(lastCompletedAt).getTime();
@@ -126,15 +133,12 @@ export async function getTestSchedule(userId: string): Promise<TestScheduleItem[
       daysUntilDue = intervalDays - daysSinceLast;
     }
 
-    // Determine status
     let status: TestStatus = 'due';
     if (!lastCompletedAt) {
-      status = 'due'; // Never done, so it's due
+      status = 'due';
     } else if (daysUntilDue <= 0) {
       status = daysUntilDue < -1 ? 'overdue' : 'due';
     } else if (daysUntilDue > 0) {
-      // If it's done within the current day (or within 24h for daily tasks)
-      // we mark it as completed.
       const lastCompletedDate = new Date(lastCompletedAt);
       const today = new Date();
       const doneToday = 
@@ -142,11 +146,9 @@ export async function getTestSchedule(userId: string): Promise<TestScheduleItem[
         lastCompletedDate.getMonth() === today.getMonth() &&
         lastCompletedDate.getFullYear() === today.getFullYear();
       
-      // For non-daily tests, if it's done within the interval, it's upcoming
       if (intervalDays > 1) {
         status = 'upcoming';
       } else {
-        // For daily tests, if done today, it's completed
         status = doneToday ? 'completed' : 'due';
       }
     }
@@ -161,6 +163,7 @@ export async function getTestSchedule(userId: string): Promise<TestScheduleItem[
       label: cfg.label,
       route: cfg.route,
       intervalDays,
+      frequencyLabel: cfg.frequencyLabel,
       lastCompletedAt,
       daysUntilDue,
       status,
