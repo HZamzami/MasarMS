@@ -40,42 +40,38 @@ export default function HomeScreen() {
 
         {/* Motor tapping test launch card */}
         <TouchableOpacity
-          className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant"
+          className="bg-primary rounded-3xl p-6"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
           onPress={() => router.push('/tests/motor-tapping')}
           accessibilityRole="button"
           accessibilityLabel="Start motor tapping test"
         >
-          <View className="w-12 h-12 rounded-2xl bg-primary-container items-center justify-center">
-            <Ionicons name="hand-left-outline" size={26} color="#004a5d" />
-          </View>
+          <Ionicons name="hand-left-outline" size={36} color="white" />
           <View style={{ flex: 1 }}>
-            <Text className="text-on-surface font-bold text-lg">Motor Tapping Test</Text>
-            <Text className="text-on-surface-variant text-sm">
+            <Text className="text-on-primary font-bold text-lg">Motor Tapping Test</Text>
+            <Text className="text-on-primary text-sm" style={{ opacity: 0.75 }}>
               10-second motor biomarker capture
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#576065" />
+          <Ionicons name="chevron-forward" size={20} color="white" />
         </TouchableOpacity>
 
         {/* Mobility test launch card */}
         <TouchableOpacity
-          className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant"
+          className="bg-primary rounded-3xl p-6"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
           onPress={() => router.push('/tests/mobility')}
           accessibilityRole="button"
           accessibilityLabel="Start mobility test"
         >
-          <View className="w-12 h-12 rounded-2xl bg-tertiary-container items-center justify-center">
-            <MaterialCommunityIcons name="walk" size={26} color="#005e54" />
-          </View>
+          <MaterialCommunityIcons name="walk" size={36} color="white" />
           <View style={{ flex: 1 }}>
-            <Text className="text-on-surface font-bold text-lg">Mobility & U-Turn Test</Text>
-            <Text className="text-on-surface-variant text-sm">
+            <Text className="text-on-primary font-bold text-lg">Mobility & U-Turn Test</Text>
+            <Text className="text-on-primary text-sm" style={{ opacity: 0.75 }}>
               2-minute gait and turn assessment
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#576065" />
+          <Ionicons name="chevron-forward" size={20} color="white" />
         </TouchableOpacity>
 
         {/* Info card */}
@@ -92,10 +88,38 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Sign out */}
+      {/* Bottom actions */}
       <View className="px-6 pb-6">
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity
+            className="flex-1 bg-primary rounded-2xl py-4 items-center flex-row justify-center"
+            style={{ gap: 8 }}
+            onPress={() => router.replace('/')}
+            accessibilityRole="button"
+            accessibilityLabel="Home"
+          >
+            <Ionicons name="home-outline" size={20} color="white" />
+            <Text className="text-on-primary font-bold text-base">
+              Home
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-1 bg-primary rounded-2xl py-4 items-center flex-row justify-center"
+            style={{ gap: 8 }}
+            onPress={() => router.push('/tests/results_overall')}
+            accessibilityRole="button"
+            accessibilityLabel="Results"
+          >
+            <Ionicons name="bar-chart-outline" size={20} color="white" />
+            <Text className="text-on-primary font-bold text-base">
+              Results
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
-          className="w-full border border-outline-variant rounded-2xl py-3 items-center flex-row justify-center"
+          className="w-full border border-outline-variant rounded-2xl py-3 items-center flex-row justify-center mt-3"
           style={{ gap: 8 }}
           onPress={() => void supabase.auth.signOut()}
           accessibilityRole="button"

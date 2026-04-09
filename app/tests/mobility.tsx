@@ -555,7 +555,7 @@ export default function MobilityTestScreen() {
             </Text>
           ) : (
             <Text className="text-xs text-tertiary mt-3">
-              Observation synced to Supabase.
+              Observation saved.
             </Text>
           )}
         </View>
