@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { supabase } from '../../lib/supabase';
 
 interface HistoryItem {
@@ -78,6 +79,7 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <View className="flex-1 px-6 pt-4">
         <View className="mb-8">
           <Text className="text-3xl font-black text-on-surface tracking-tight" style={textAlign}>{messages.history.title}</Text>

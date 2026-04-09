@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <View className="flex-1 px-6 pt-12 pb-8 justify-between">
 
         {/* ── Hero ──────────────────────────────────────────────────────── */}

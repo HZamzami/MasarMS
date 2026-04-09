@@ -13,7 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import { useLocalization } from '../../lib/i18n';
+import { getLocalizedErrorMessage, useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { supabase } from '../../lib/supabase';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { DailyEMAData } from '../../lib/types';
@@ -197,7 +198,7 @@ export default function DailyCheckin() {
       setStreak(computedStreak);
       setScreenState('done');
     } catch (error) {
-      const message = error instanceof Error ? error.message : messages.common.saveFailed;
+      const message = getLocalizedErrorMessage(error, messages, messages.common.saveFailed);
       setSaveError(message);
       setScreenState('form');
     }
@@ -207,6 +208,7 @@ export default function DailyCheckin() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <View
           className="items-center justify-between px-6 py-4"

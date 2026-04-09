@@ -10,7 +10,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { CountdownOverlay } from '../../lib/CountdownOverlay';
-import { useLocalization } from '../../lib/i18n';
+import { getLocalizedErrorMessage, useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { FingerTappingData } from '../../lib/types';
 
@@ -81,13 +82,13 @@ export default function MotorTappingTaskScreen() {
 
       router.replace('/');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : messages.common.saveFailed;
+      const msg = getLocalizedErrorMessage(err, messages, messages.common.saveFailed);
       setSaveError(msg.toLowerCase().includes('schema cache')
         ? messages.common.saveFailed
         : msg);
       setStatus('error');
     }
-  }, [router, dominantHand, messages.common.saveFailed]);
+  }, [router, dominantHand, messages]);
 
   useEffect(() => {
     if (testMode !== 'running') return;
@@ -134,6 +135,7 @@ export default function MotorTappingTaskScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       {testMode === 'selection' && (
         <View className="flex-1 px-8 justify-center">
           <View className="w-20 h-20 rounded-3xl bg-primary-container items-center justify-center mb-8 self-center">

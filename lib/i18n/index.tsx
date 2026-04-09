@@ -36,6 +36,17 @@ type LocalizationContextValue = {
 
 const LocalizationContext = createContext<LocalizationContextValue | null>(null);
 
+function extractErrorText(error: unknown): string | null {
+  if (!error) return null;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (typeof error === 'object' && error !== null) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+  }
+  return null;
+}
+
 function applyNativeDirection(language: AppLanguage) {
   if (Platform.OS === 'web') return false;
 
@@ -52,6 +63,22 @@ export async function loadStoredLanguage(): Promise<AppLanguage> {
   const language: AppLanguage = stored === 'ar' ? 'ar' : 'en';
   applyNativeDirection(language);
   return language;
+}
+
+export function getLocalizedErrorMessage(
+  error: unknown,
+  messages: AppMessages,
+  fallback: string,
+): string {
+  const raw = extractErrorText(error);
+
+  if (!raw) return fallback;
+  if (raw === 'No authenticated user found.') return messages.common.sessionExpired;
+  if (raw === 'Unable to save observation.' || raw === 'Failed to save mobility observation.') {
+    return fallback;
+  }
+
+  return raw;
 }
 
 export function LocalizationProvider({

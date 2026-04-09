@@ -9,7 +9,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalization } from '../../lib/i18n';
+import { getLocalizedErrorMessage, useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { supabase } from '../../lib/supabase';
 
 type SourceResult = {
@@ -52,15 +53,12 @@ const DATA_SOURCES = [
   { table: 'passive_events', titleKey: 'backgroundData' },
 ] as const;
 
-function getErrorText(error: unknown, fallback: string) {
-  if (!error) return fallback;
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'string') return error;
-  if (typeof error === 'object' && error !== null) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === 'string') return message;
-  }
-  return fallback;
+function getErrorText(
+  error: unknown,
+  messages: ReturnType<typeof useLocalization>['messages'],
+  fallback: string,
+) {
+  return getLocalizedErrorMessage(error, messages, fallback);
 }
 
 function simpleLabel(input: string) {
@@ -120,8 +118,8 @@ function inferTapCountFromEvents(record: Record<string, unknown> | null): number
   return null;
 }
 
-function displayFieldLabel(key: string) {
-  if (key === 'created_at') return 'Date';
+function displayFieldLabel(key: string, messages: ReturnType<typeof useLocalization>['messages']) {
+  if (key === 'created_at') return messages.databaseTesting.dateField;
   return simpleLabel(key);
 }
 
@@ -181,7 +179,7 @@ export default function DatabaseTestingScreen() {
         const formatted = formatMetricValue(value, messages);
         return {
           key,
-          label: displayFieldLabel(key),
+          label: displayFieldLabel(key, messages),
           valueText: formatted.valueText,
           numericValue: formatted.numericValue,
         };
@@ -199,7 +197,12 @@ export default function DatabaseTestingScreen() {
       metrics = metrics.map((metric) => {
         const normalizedKey = normalizeTestType(metric.key);
         if ((normalizedKey === 'durationseconds' || normalizedKey === 'duration') && scorePct !== null) {
-          return { ...metric, label: 'Score %', valueText: `${Math.round(scorePct)}%`, numericValue: scorePct };
+          return {
+            ...metric,
+            label: messages.databaseTesting.scorePercent,
+            valueText: `${Math.round(scorePct)}%`,
+            numericValue: scorePct,
+          };
         }
         if (normalizedKey === 'ipsscore' && correctMatches !== null) {
           return { ...metric, label: messages.results.correct, valueText: String(Math.round(correctMatches)), numericValue: correctMatches };
@@ -266,7 +269,7 @@ export default function DatabaseTestingScreen() {
     } = await supabase.auth.getUser();
 
     if (userError) {
-      setAuthProblem(getErrorText(userError, messages.databaseTesting.unknownProblem));
+      setAuthProblem(getErrorText(userError, messages, messages.databaseTesting.unknownProblem));
       setResults([]);
       return;
     }
@@ -281,7 +284,7 @@ export default function DatabaseTestingScreen() {
       return {
         source: source.table,
         rows: Array.isArray(data) ? (data as Record<string, unknown>[]) : [],
-        error: error ? getErrorText(error, messages.databaseTesting.unknownProblem) : null,
+        error: error ? getErrorText(error, messages, messages.databaseTesting.unknownProblem) : null,
       } satisfies SourceResult;
     });
 
@@ -326,7 +329,9 @@ export default function DatabaseTestingScreen() {
     const groups = new Map<string, TestHistoryGroup>();
     for (const row of testHistorySource.rows) {
       const rawTestType = row.test_type;
-      const testType = typeof rawTestType === 'string' && rawTestType.length > 0 ? rawTestType : 'Unknown Test';
+      const testType = typeof rawTestType === 'string' && rawTestType.length > 0
+        ? rawTestType
+        : messages.databaseTesting.unknownTest;
       const existing = groups.get(testType);
       if (!existing) {
         groups.set(testType, { testType, runs: [row] });
@@ -344,10 +349,11 @@ export default function DatabaseTestingScreen() {
     }
 
     return Array.from(groups.values()).sort((a, b) => a.testType.localeCompare(b.testType));
-  }, [results]);
+  }, [messages.databaseTesting.unknownTest, results]);
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <View className="px-6 pt-4 pb-3 items-center justify-between" style={row}>
         <View className="items-center" style={row}>
           <TouchableOpacity
@@ -544,7 +550,7 @@ export default function DatabaseTestingScreen() {
                   </Text>
                   {previewFields.map(([key, value]) => (
                     <Text key={`${sourceMeta.table}-${key}`} className="text-on-surface-variant text-xs">
-                      {displayFieldLabel(key)}: {key === 'created_at' ? formatDateForDisplay(value) : simpleValue(value, messages)}
+                      {displayFieldLabel(key, messages)}: {key === 'created_at' ? formatDateForDisplay(value) : simpleValue(value, messages)}
                     </Text>
                   ))}
                 </View>

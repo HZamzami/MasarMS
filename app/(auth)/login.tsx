@@ -14,10 +14,25 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { supabase } from '../../lib/supabase';
 
 type Mode = 'login' | 'signup';
 type Screen = 'form' | 'verify';
+
+function localizeAuthError(
+  rawMessage: string,
+  messages: ReturnType<typeof useLocalization>['messages'],
+) {
+  const normalized = rawMessage.toLowerCase();
+
+  if (normalized.includes('invalid login credentials')) return messages.auth.invalidCredentials;
+  if (normalized.includes('email not confirmed')) return messages.auth.emailNotConfirmed;
+  if (normalized.includes('user already registered')) return messages.auth.emailAlreadyRegistered;
+  if (normalized.includes('password should be at least 6 characters')) return messages.auth.weakPassword;
+
+  return messages.auth.genericError;
+}
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -41,7 +56,7 @@ export default function LoginScreen() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) setError(error.message);
+    if (error) setError(localizeAuthError(error.message, messages));
     // On success: _layout.tsx onAuthStateChange fires SIGNED_IN and routes the user
   }
 
@@ -51,7 +66,7 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(localizeAuthError(error.message, messages));
     } else {
       setScreen('verify');
     }
@@ -63,7 +78,7 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     setResendLoading(false);
     if (error) {
-      setResendInfo(messages.auth.resendFailed.replace('{message}', error.message));
+      setResendInfo(messages.auth.resendFailed.replace('{message}', localizeAuthError(error.message, messages)));
     } else {
       setResendInfo(messages.auth.resendSuccess);
     }
@@ -78,6 +93,7 @@ export default function LoginScreen() {
   if (screen === 'verify') {
     return (
       <SafeAreaView className="flex-1 bg-surface">
+        <LanguageToggleBar />
         <View className="flex-1 items-center justify-center px-8">
           {/* Icon */}
           <View className="w-24 h-24 rounded-full bg-primary-container items-center justify-center mb-8">
@@ -139,6 +155,7 @@ export default function LoginScreen() {
   // ── Auth form ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

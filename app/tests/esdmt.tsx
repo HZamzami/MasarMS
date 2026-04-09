@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { saveTestResult } from '../../lib/saveTestResult';
 import { CountdownOverlay } from '../../lib/CountdownOverlay';
 import { useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import type { EsdmtData } from '../../lib/types';
 
 // ─── Icon set (9 unique MaterialCommunityIcons) ────────────────────────────
@@ -149,6 +150,7 @@ export default function EsdmtScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       {isCountingDown && (
         <CountdownOverlay onFinished={() => setIsCountingDown(false)} />
       )}

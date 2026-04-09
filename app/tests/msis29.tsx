@@ -9,7 +9,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalization } from '../../lib/i18n';
+import { getLocalizedErrorMessage, useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { MSIS29Data } from '../../lib/types';
 
@@ -53,7 +54,7 @@ function ResponseRow({
   value: number | null;
   onChange: (value: number) => void;
 }) {
-  const { messages, row, textAlign } = useLocalization();
+  const { formatMessage, messages, row, textAlign } = useLocalization();
 
   return (
     <View
@@ -74,7 +75,7 @@ function ResponseRow({
               onPress={() => onChange(score)}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              accessibilityLabel={`${score} - ${label}`}
+              accessibilityLabel={formatMessage(messages.msis29.responseA11y, { score, label })}
               className="flex-1 items-center"
             >
               <View
@@ -228,13 +229,14 @@ export default function MSIS29Screen() {
       });
       setScreenState('done');
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : messages.common.saveFailed);
+      setSaveError(getLocalizedErrorMessage(error, messages, messages.common.saveFailed));
       setScreenState('error');
     }
   }
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <View
         className="items-center justify-between px-6 py-4"
         style={[row, { borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.25)' }]}

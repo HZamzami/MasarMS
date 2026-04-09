@@ -13,7 +13,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { CountdownOverlay } from '../../lib/CountdownOverlay';
-import { useLocalization } from '../../lib/i18n';
+import { getLocalizedErrorMessage, useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { PinchDragData } from '../../lib/types';
 
@@ -78,12 +79,12 @@ function ResultCard({
 
   const tier =
     accuracyPct >= 90
-      ? { label: 'Excellent', color: '#006b60' }
+      ? { label: messages.pinchDrag.tiers.excellent, color: '#006b60' }
       : accuracyPct >= 70
-      ? { label: 'Good',      color: '#005b71' }
+      ? { label: messages.pinchDrag.tiers.good, color: '#005b71' }
       : accuracyPct >= 50
-      ? { label: 'Fair',      color: '#b97c00' }
-      : { label: 'Impaired',  color: '#a83836' };
+      ? { label: messages.pinchDrag.tiers.fair, color: '#b97c00' }
+      : { label: messages.pinchDrag.tiers.impaired, color: '#a83836' };
 
   return (
     <View className="flex-1 items-center justify-center px-8">
@@ -279,13 +280,14 @@ export default function PinchDragScreen() {
       });
       setScreenState('done');
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : messages.common.saveFailed);
+      setSaveError(getLocalizedErrorMessage(err, messages, messages.common.saveFailed));
       setScreenState('error');
     }
-  }, [dominantHand, messages.common.saveFailed]);
+  }, [dominantHand, messages]);
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-6 py-4"

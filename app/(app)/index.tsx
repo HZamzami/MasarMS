@@ -11,6 +11,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { supabase } from '../../lib/supabase';
 import { getTestSchedule } from '../../lib/scheduling';
 import { getStreak } from '../../lib/gamification';
@@ -274,11 +275,9 @@ export default function HomeScreen() {
     formatDate,
     formatMessage,
     formatNumber,
-    language,
     messages,
     row,
     textAlign,
-    toggleLanguage,
   } = useLocalization();
   const [loading, setLoading] = useState(true);
   const [dash, setDash] = useState<DashboardData>({
@@ -348,6 +347,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}
@@ -363,18 +363,6 @@ export default function HomeScreen() {
           </View>
 
           <View className="items-center" style={row}>
-            <TouchableOpacity
-              className="h-11 rounded-2xl bg-surface-container-low px-4 items-center justify-center border border-outline-variant/30"
-              style={{ marginEnd: 10 }}
-              onPress={() => void toggleLanguage()}
-              accessibilityRole="button"
-              accessibilityLabel={messages.home.languageToggleA11y}
-            >
-              <Text className="text-xs font-black text-primary uppercase tracking-wide">
-                {language === 'en' ? messages.common.switchToArabic : messages.common.switchToEnglish}
-              </Text>
-            </TouchableOpacity>
-
             {dash.streak.currentStreak > 1 ? (
               <View
                 className="bg-tertiary-container px-3 py-1.5 rounded-full items-center"

@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { supabase } from '../../lib/supabase';
 import type { Profile } from '../../lib/types';
 
@@ -307,7 +308,7 @@ export default function ProfileSetup() {
     setLoading(false);
 
     if (error) {
-      setErrors({ _global: error.message });
+      setErrors({ _global: messages.common.saveFailed });
       return;
     }
 
@@ -318,6 +319,7 @@ export default function ProfileSetup() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <View className="px-6 pt-5 pb-4">
           <View className="items-center justify-between mb-3" style={row}>

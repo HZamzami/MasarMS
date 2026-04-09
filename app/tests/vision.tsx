@@ -10,7 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useLocalization } from '../../lib/i18n';
+import { getLocalizedErrorMessage, useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { saveTestResult } from '../../lib/saveTestResult';
 import type { VisionContrastData } from '../../lib/types';
 
@@ -65,13 +66,15 @@ function LetterButton({
   onPress: () => void;
   disabled: boolean;
 }) {
+  const { formatMessage, messages } = useLocalization();
+
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
       hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
       accessibilityRole="button"
-      accessibilityLabel={`Letter ${letter}`}
+      accessibilityLabel={formatMessage(messages.vision.letterA11y, { letter })}
       activeOpacity={0.65}
       className="flex-1 rounded-2xl bg-surface-container items-center justify-center"
       style={{ aspectRatio: 1, opacity: disabled ? 0.5 : 1 }}
@@ -245,10 +248,10 @@ export default function VisionTestScreen() {
       });
       setScreenState('done');
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : messages.common.saveFailed);
+      setSaveError(getLocalizedErrorMessage(err, messages, messages.common.saveFailed));
       setScreenState('error');
     }
-  }, [messages.common.saveFailed]);
+  }, [messages]);
 
   const handleLetterPress = useCallback(
     (pressed: Letter) => {
@@ -318,6 +321,7 @@ export default function VisionTestScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-6 py-4"

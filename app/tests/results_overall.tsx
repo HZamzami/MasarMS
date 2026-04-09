@@ -3,7 +3,8 @@ import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useLocalization } from '../../lib/i18n';
+import { getLocalizedErrorMessage, useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { supabase } from '../../lib/supabase';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -26,15 +27,11 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function getErrorMessage(error: unknown): string {
-  if (!error) return 'Unable to save observation.';
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'string') return error;
-  if (typeof error === 'object' && error !== null) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === 'string') return message;
-  }
-  return 'Unable to save observation.';
+function getErrorMessage(
+  error: unknown,
+  messages: ReturnType<typeof useLocalization>['messages'],
+): string {
+  return getLocalizedErrorMessage(error, messages, messages.common.saveFailed);
 }
 
 export default function ResultsOverallScreen() {
@@ -142,7 +139,7 @@ export default function ResultsOverallScreen() {
         if (detailedUpsert.error) {
           const fallbackUpsert = await supabase.from('observations').upsert(fallbackPayload);
           if (fallbackUpsert.error) {
-            throw new Error(`${getErrorMessage(detailedUpsert.error)} | ${getErrorMessage(fallbackUpsert.error)}`);
+            throw new Error(`${getErrorMessage(detailedUpsert.error, messages)} | ${getErrorMessage(fallbackUpsert.error, messages)}`);
           }
         }
 
@@ -150,7 +147,7 @@ export default function ResultsOverallScreen() {
       } catch (error) {
         if (mounted) {
           setSaveState('error');
-          setSaveError(getErrorMessage(error));
+          setSaveError(getErrorMessage(error, messages));
         }
       }
     };
@@ -160,10 +157,11 @@ export default function ResultsOverallScreen() {
     return () => {
       mounted = false;
     };
-  }, [accuracy, reactionTime, score]);
+  }, [accuracy, messages, reactionTime, score]);
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 }}

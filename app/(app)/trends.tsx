@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import { supabase } from '../../lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -85,10 +86,12 @@ function MiniBarChart({
   points: DataPoint[];
   higherIsBetter: boolean;
 }) {
+  const { messages } = useLocalization();
+
   if (points.length === 0) {
     return (
       <View style={{ height: CHART_HEIGHT }} className="items-center justify-center">
-        <Text className="text-xs text-on-surface-variant">No data yet</Text>
+        <Text className="text-xs text-on-surface-variant">{messages.common.noDataYet}</Text>
       </View>
     );
   }
@@ -246,7 +249,7 @@ export default function TrendsScreen() {
             return {
               testType: cfg.testType,
               label: messages.shared.trendLabels[cfg.label as keyof typeof messages.shared.trendLabels] ?? cfg.label,
-              unit: cfg.unit,
+              unit: messages.shared.trendUnits[cfg.testType as keyof typeof messages.shared.trendUnits] ?? cfg.unit,
               points,
               higherIsBetter: cfg.higherIsBetter,
             };
@@ -267,6 +270,7 @@ export default function TrendsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}

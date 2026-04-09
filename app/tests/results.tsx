@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 
 export default function ResultsScreen() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function ResultsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <View className="items-center justify-between px-6 py-4" style={row}>
         <View className="w-8 h-8" />
         <Text className="text-xl font-bold text-on-surface">{messages.common.appName}</Text>

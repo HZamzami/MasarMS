@@ -13,7 +13,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { CountdownOverlay } from '../../lib/CountdownOverlay';
-import { useLocalization } from '../../lib/i18n';
+import { getLocalizedErrorMessage, useLocalization } from '../../lib/i18n';
+import { LanguageToggleBar } from '../../lib/LanguageToggleBar';
 import {
   Accelerometer,
   Gyroscope,
@@ -47,20 +48,20 @@ function formatMmSs(totalMs: number) {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-function extractErrorMessage(error: unknown) {
-  if (!error) return 'Failed to save mobility observation.';
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'string') return error;
+function extractErrorMessage(
+  error: unknown,
+  messages: ReturnType<typeof useLocalization>['messages'],
+) {
+  const baseMessage = getLocalizedErrorMessage(error, messages, messages.common.saveFailed);
+
   if (typeof error === 'object' && error !== null) {
-    const maybeMessage = (error as { message?: unknown }).message;
     const maybeDetails = (error as { details?: unknown }).details;
-    const message = typeof maybeMessage === 'string' ? maybeMessage : 'Failed to save mobility observation.';
     if (typeof maybeDetails === 'string' && maybeDetails.length > 0) {
-      return `${message} Details: ${maybeDetails}`;
+      return `${baseMessage} ${messages.common.details}: ${maybeDetails}`;
     }
-    return message;
   }
-  return 'Failed to save mobility observation.';
+
+  return baseMessage;
 }
 
 export default function MobilityTestScreen() {
@@ -273,11 +274,11 @@ export default function MobilityTestScreen() {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error) {
-      setSaveError(extractErrorMessage(error));
+      setSaveError(extractErrorMessage(error, messages));
     } finally {
       setTestState('SUMMARY');
     }
-  }, [buildSummary, sensorUnavailable]);
+  }, [buildSummary, messages, sensorUnavailable]);
 
   useEffect(() => {
     if (testState !== 'ACTIVE') return;
@@ -509,7 +510,7 @@ export default function MobilityTestScreen() {
             <Text className="text-2xl font-extrabold text-on-surface">
               {averageAcceleration.toFixed(2)}
             </Text>
-            <Text className="text-xs font-medium text-tertiary mt-1">m/s²</Text>
+            <Text className="text-xs font-medium text-tertiary mt-1">{messages.mobility.accelerationUnit}</Text>
           </View>
         </View>
 
@@ -552,6 +553,7 @@ export default function MobilityTestScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      <LanguageToggleBar />
       <View className="h-16 bg-surface-container-low px-6 flex-row items-center justify-between">
         <View className="flex-row items-center" style={{ gap: 10 }}>
           <TouchableOpacity
