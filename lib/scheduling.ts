@@ -51,16 +51,21 @@ export async function getTestSchedule(userId: string): Promise<TestScheduleItem[
   return SCHEDULE_CONFIG.map((cfg) => {
     const lastCompletedAt = lastCompletedMap.get(cfg.testType) ?? null;
 
-    const daysSinceLast = lastCompletedAt
-      ? Math.floor((now - new Date(lastCompletedAt).getTime()) / MS_PER_DAY)
-      : Infinity;
+    // A test that has never been done is not "overdue" — the clock hasn't
+    // started yet. We treat it as having the full interval ahead so no
+    // badges render on day 1.
+    const neverDone = lastCompletedAt === null;
 
-    const daysUntilDue = isFinite(daysSinceLast)
-      ? cfg.intervalDays - daysSinceLast
-      : -cfg.intervalDays; // never done → overdue by the full interval
+    const daysSinceLast = neverDone
+      ? null
+      : Math.floor((now - new Date(lastCompletedAt!).getTime()) / MS_PER_DAY);
 
-    const isDueToday = daysUntilDue <= 0 && daysUntilDue > -1;
-    const isOverdue = daysUntilDue < 0;
+    const daysUntilDue = daysSinceLast === null
+      ? cfg.intervalDays
+      : cfg.intervalDays - daysSinceLast;
+
+    const isDueToday = !neverDone && daysUntilDue <= 0 && daysUntilDue > -1;
+    const isOverdue  = !neverDone && daysUntilDue < 0;
 
     return {
       testType: cfg.testType,
