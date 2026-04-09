@@ -84,3 +84,35 @@ export interface MobilityData {
   duration_seconds: number;
   sensor_available: boolean;
 }
+
+export interface VisionContrastData {
+  /**
+   * Opacity (0.0–1.0) at which the patient failed 3 consecutive times.
+   * Lower value = better contrast sensitivity (could see fainter letters).
+   */
+  final_contrast_threshold: number;
+  total_correct_matches: number;
+  total_attempts: number;
+  accuracy_pct: number;
+  /** Full trial log — enables psychometric curve reconstruction over time. */
+  staircase_log: Array<{ opacity: number; correct: boolean }>;
+  test_version: string;
+}
+
+export interface DailyEMAData {
+  /** 0–4 ordinal: Very Poor=0, Poor=1, Neutral=2, Good=3, Great=4 */
+  mood_index: number;
+  /** Normalized 0.0–1.0 (mood_index / 4) */
+  mood_normalized: number;
+  /** Raw slider value 1–10 */
+  energy_level: number;
+  /** Normalized 0.0–1.0 ((energy_level - 1) / 9) */
+  energy_normalized: number;
+  /** Optional free-text symptom note */
+  notes: string | null;
+  /** ISO timestamp from device clock — enables diurnal fatigue pattern analysis */
+  captured_at: string;
+  /** Frequency marker — distinguishes daily EMA from 3×/week motor tests */
+  frequency: 'daily';
+  test_version: string;
+}

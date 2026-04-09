@@ -20,6 +20,24 @@ export default function HomeScreen() {
       </View>
 
       <View className="flex-1 px-6 pt-6" style={{ gap: 16 }}>
+        {/* Daily check-in card */}
+        <TouchableOpacity
+          className="bg-tertiary rounded-3xl p-6"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+          onPress={() => router.push('/tests/daily-checkin')}
+          accessibilityRole="button"
+          accessibilityLabel="Start daily check-in"
+        >
+          <Ionicons name="heart-outline" size={36} color="white" />
+          <View style={{ flex: 1 }}>
+            <Text className="text-on-tertiary font-bold text-lg">Daily Check-in</Text>
+            <Text className="text-on-tertiary text-sm" style={{ opacity: 0.75 }}>
+              Mood &amp; energy — takes ~1 minute
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="white" />
+        </TouchableOpacity>
+
         {/* eSDMT test launch card */}
         <TouchableOpacity
           className="bg-primary rounded-3xl p-6"
@@ -69,6 +87,24 @@ export default function HomeScreen() {
             <Text className="text-on-primary font-bold text-lg">Mobility & U-Turn Test</Text>
             <Text className="text-on-primary text-sm" style={{ opacity: 0.75 }}>
               2-minute gait and turn assessment
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="white" />
+        </TouchableOpacity>
+
+        {/* Vision / contrast sensitivity test launch card */}
+        <TouchableOpacity
+          className="bg-primary rounded-3xl p-6"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+          onPress={() => router.push('/tests/vision')}
+          accessibilityRole="button"
+          accessibilityLabel="Start contrast sensitivity test"
+        >
+          <Ionicons name="eye-outline" size={36} color="white" />
+          <View style={{ flex: 1 }}>
+            <Text className="text-on-primary font-bold text-lg">Contrast Sensitivity</Text>
+            <Text className="text-on-primary text-sm" style={{ opacity: 0.75 }}>
+              Vision staircase test
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="white" />
