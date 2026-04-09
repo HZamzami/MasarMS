@@ -1,6 +1,6 @@
 import "../global.css";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Slot, useRouter } from "expo-router";
@@ -11,34 +11,57 @@ import { supabase } from "../lib/supabase";
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  const routeRef = useRef<"/" | "/login" | "/onboarding/profile">("/login");
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setReady(true);
-    });
+    let mounted = true;
 
+    async function bootstrap() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        // Check whether the user has completed onboarding (phenotype set).
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("ms_phenotype")
+          .eq("id", session.user.id)
+          .single();
+
+        routeRef.current =
+          profile?.ms_phenotype ? "/" : "/onboarding/profile";
+      } else {
+        routeRef.current = "/login";
+      }
+
+      if (mounted) setReady(true);
+    }
+
+    bootstrap();
+
+    // Keep session current so sign-out is reflected immediately.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((event, session: Session | null) => {
+      if (event === "SIGNED_OUT" || !session) {
+        router.replace("/login");
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     if (!ready) return;
     SplashScreen.hideAsync();
-    if (session) {
-      router.replace("/");
-    } else {
-      router.replace("/login");
-    }
-  }, [ready, session]);
+    router.replace(routeRef.current);
+  }, [ready]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

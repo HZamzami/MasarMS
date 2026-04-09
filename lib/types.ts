@@ -17,6 +17,13 @@ export interface Profile {
   id: string;
   ms_phenotype: 'RRMS' | 'SPMS' | 'PPMS' | 'PRMS' | null;
   baseline_completed_at: string | null;
+  /** Years elapsed since MS diagnosis. Set during onboarding. */
+  years_since_diagnosis: number | null;
+  /** Expanded Disability Status Scale (0–10, step 0.5). Optional. */
+  edss_score: number | null;
+  /** Patient age (18–65). Set during onboarding. */
+  age: number | null;
+  /** Auto-set at signup — serves as enrolled_at for the 84-day baseline countdown. */
   created_at: string;
   updated_at: string;
 }
