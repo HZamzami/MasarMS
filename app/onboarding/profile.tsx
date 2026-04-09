@@ -33,22 +33,29 @@ const PHENOTYPES: Array<{
     key: 'RRMS',
     label: 'Relapsing-Remitting MS',
     shortLabel: 'RRMS',
-    subtitle: 'Most common form — relapses followed by recovery periods.',
+    subtitle: 'Relapses followed by recovery periods.',
     icon: 'refresh-circle-outline',
   },
   {
     key: 'SPMS',
     label: 'Secondary Progressive MS',
     shortLabel: 'SPMS',
-    subtitle: 'Steady progression following an initial relapsing-remitting course.',
+    subtitle: 'Steady progression following an initial relapsing course.',
     icon: 'trending-up-outline',
   },
   {
     key: 'PPMS',
     label: 'Primary Progressive MS',
     shortLabel: 'PPMS',
-    subtitle: 'Gradual worsening of neurological function from onset.',
+    subtitle: 'Gradual worsening from onset.',
     icon: 'stats-chart-outline',
+  },
+  {
+    key: 'PRMS',
+    label: 'Progressive-Relapsing MS',
+    shortLabel: 'PRMS',
+    subtitle: 'Steady progression with acute relapses.',
+    icon: 'alert-circle-outline',
   },
 ];
 
@@ -279,19 +286,19 @@ export default function ProfileSetup() {
     }
 
     const heightVal = parseInt(heightCm, 10);
-    if (!heightCm || isNaN(heightVal) || heightVal < 100 || heightVal > 250) {
-      next.heightCm = 'Enter a valid height in cm (100–250).';
+    if (!heightCm || isNaN(heightVal) || heightVal < 50 || heightVal > 300) {
+      next.heightCm = 'Enter a valid height in cm.';
     }
 
     const weightVal = parseFloat(weightKg);
-    if (!weightKg || isNaN(weightVal) || weightVal < 30 || weightVal > 300) {
-      next.weightKg = 'Enter a valid weight in kg (30–300).';
+    if (!weightKg || isNaN(weightVal) || weightVal < 20 || weightVal > 500) {
+      next.weightKg = 'Enter a valid weight in kg.';
     }
 
     if (edss) {
       const edssVal = parseFloat(edss);
-      if (isNaN(edssVal) || edssVal < 0 || edssVal > 10) {
-        next.edss = 'EDSS score must be between 0.0 and 10.0.';
+      if (isNaN(edssVal) || edssVal < 0 || edssVal > 5.5) {
+        next.edss = 'Standard MasarMS monitoring is for ambulatory patients (EDSS 0–5.5).';
       }
     }
 

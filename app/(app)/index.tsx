@@ -12,6 +12,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '../../lib/supabase';
 import { getTestSchedule } from '../../lib/scheduling';
 import { getStreak } from '../../lib/gamification';
+import { detectDecline } from '../../lib/decline';
 import type {
   EsdmtData,
   FingerTappingData,
@@ -33,6 +34,7 @@ interface DashboardData {
   msPhenotype: string | null;
   schedule: TestScheduleItem[];
   streak: StreakInfo;
+  alerts: Record<string, 'none' | 'concern' | 'alert'>;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -177,6 +179,59 @@ function FrequencySection({ title, items, daysElapsed, router }: { title: string
   );
 }
 
+function HealthStatusSection({ alerts }: { alerts: Record<string, 'none' | 'concern' | 'alert'> }) {
+  const hasAlerts = Object.values(alerts).some(v => v !== 'none');
+  const alertCount = Object.values(alerts).filter(v => v === 'alert').length;
+  const concernCount = Object.values(alerts).filter(v => v === 'concern').length;
+
+  return (
+    <View className="bg-surface-container-lowest rounded-3xl p-6 mb-8 shadow-sm">
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-sm font-black text-on-surface uppercase tracking-widest">Biomarker Status</Text>
+        <View className="flex-row items-center" style={{ gap: 4 }}>
+          <View className={`w-2 h-2 rounded-full ${alertCount > 0 ? 'bg-error' : concernCount > 0 ? 'bg-warning' : 'bg-success'}`} />
+          <Text className="text-[10px] font-bold text-on-surface-variant uppercase">
+            {alertCount > 0 ? 'Action Required' : concernCount > 0 ? 'Under Review' : 'All Stable'}
+          </Text>
+        </View>
+      </View>
+
+      <View className="flex-row justify-between" style={{ gap: 8 }}>
+        {['Cognitive', 'Motor', 'Mobility', 'Vision'].map((domain) => {
+          // Map domain name to test type for lookup
+          const typeMap: Record<string, string> = { 
+            'Cognitive': 'eSDMT', 
+            'Motor': 'FingerTapping', 
+            'Mobility': '2MWT', 
+            'Vision': 'ContrastSensitivity' 
+          };
+          const type = typeMap[domain];
+          const severity = alerts[type] ?? 'none';
+          
+          const color = severity === 'alert' ? '#ba1a1a' : severity === 'concern' ? '#b97c00' : '#006b60';
+          const bgColor = severity === 'alert' ? '#ffdad6' : severity === 'concern' ? '#ffe08d' : '#e2fff8';
+
+          return (
+            <View key={domain} className="flex-1 items-center">
+              <View 
+                className="w-10 h-10 rounded-2xl items-center justify-center mb-2"
+                style={{ backgroundColor: bgColor }}
+              >
+                <Ionicons 
+                  name={domain === 'Cognitive' ? 'brain' : domain === 'Motor' ? 'hand-left' : domain === 'Mobility' ? 'walk' : 'eye'} 
+                  size={20} 
+                  color={color} 
+                />
+              </View>
+              <Text className="text-[9px] font-black text-on-surface-variant uppercase">{domain}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
@@ -187,6 +242,7 @@ export default function HomeScreen() {
     msPhenotype: null,
     schedule: [],
     streak: DEFAULT_STREAK,
+    alerts: {},
   });
 
   useFocusEffect(
@@ -206,6 +262,16 @@ export default function HomeScreen() {
             getStreak(uid),
           ]);
 
+          // Fetch alerts for active tests
+          const activeTestTypes = ['eSDMT', 'FingerTapping', 'PinchDrag', '2MWT', 'ContrastSensitivity'];
+          const alertPromises = activeTestTypes.map(type => detectDecline(uid, type));
+          const alertResults = await Promise.all(alertPromises);
+          
+          const alerts: Record<string, 'none' | 'concern' | 'alert'> = {};
+          alertResults.forEach((res, i) => {
+            if (res) alerts[activeTestTypes[i]] = res.severity;
+          });
+
           const enrolledAt = profileRes.data?.created_at ? new Date(profileRes.data.created_at).getTime() : Date.now();
           const daysElapsed = Math.max(0, Math.floor((Date.now() - enrolledAt) / 86_400_000));
 
@@ -215,6 +281,7 @@ export default function HomeScreen() {
               msPhenotype: profileRes.data?.ms_phenotype ?? null,
               schedule,
               streak,
+              alerts,
             });
           }
         } finally {
@@ -269,6 +336,7 @@ export default function HomeScreen() {
         ) : (
           <>
             <PhaseHeader daysElapsed={dash.daysElapsed} />
+            <HealthStatusSection alerts={dash.alerts} />
 
             {/* ── Action Required ─────────────────────────────────────────── */}
             {dueTasks.length > 0 && (

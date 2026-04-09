@@ -8,6 +8,7 @@ import type { DeclineReport, DeclineSeverity } from './types';
 const METRIC_KEYS: Record<string, string> = {
   eSDMT:               'ips_score',
   FingerTapping:       'frequency_hz',
+  PinchDrag:           'accuracy_pct',
   '2MWT':              'u_turn_count',
   ContrastSensitivity: 'final_contrast_threshold',
   DailyEMA:            'mood_normalized',
@@ -19,19 +20,21 @@ const METRIC_KEYS: Record<string, string> = {
  */
 const HIGHER_IS_WORSE: Set<string> = new Set(['ContrastSensitivity']);
 
-/** Minimum weeks of sustained decline required for a given severity. */
-const CONCERN_WEEKS  = 2;
-const ALERT_WEEKS    = 4;
+/** 
+ * Section 11.2: Decline must be sustained for ≥12 weeks 
+ * to differentiate from temporary fluctuations.
+ */
+const CONCERN_WEEKS  = 4;
+const ALERT_WEEKS    = 12;
 
 /** Relative-change thresholds (expressed as fractions). */
 const CONCERN_PCT  = -0.15; // 15% adverse change
-const ALERT_PCT    = -0.20; // 20% adverse change
+const ALERT_PCT    = -0.20; // 20% adverse change (Section 11.1)
 
 // ─── Week-key helper ──────────────────────────────────────────────────────────
 
 /** Returns an ISO week string 'YYYY-Www' for a given Date. */
 function weekKey(date: Date): string {
-  // Calculate ISO week: Thursday of the week determines the year
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -45,9 +48,6 @@ function weekKey(date: Date): string {
 /**
  * Detects whether a user is showing a sustained decline on a specific test
  * compared to their personalised baseline.
- *
- * Returns null when there is insufficient data (no baseline or <2 longitudinal
- * weeks), avoiding false positives on new accounts.
  */
 export async function detectDecline(
   userId: string,
@@ -60,8 +60,8 @@ export async function detectDecline(
   const baseline = await getPersonalizedBaseline(userId, testType, metricKey);
   if (!baseline) return null;
 
-  // 2. Fetch last 84 days of longitudinal results (12 weeks)
-  const cutoff = new Date(Date.now() - 84 * 86_400_000).toISOString();
+  // 2. Fetch last 120 days of longitudinal results (to ensure we cover the 12-week window)
+  const cutoff = new Date(Date.now() - 120 * 86_400_000).toISOString();
 
   const { data: rows, error } = await supabase
     .from('test_results')
@@ -92,7 +92,7 @@ export async function detectDecline(
 
   if (weekBuckets.size < 2) return null;
 
-  // Sort weeks descending (most recent first) for consecutive-decline walk
+  // Sort weeks descending (most recent first)
   const sortedWeeks = Array.from(weekBuckets.entries())
     .sort(([a], [b]) => b.localeCompare(a));
 
@@ -104,14 +104,11 @@ export async function detectDecline(
   const baselineMean = baseline.mean;
   const inverseMetric = HIGHER_IS_WORSE.has(testType);
 
-  // "Adverse" = value went the wrong direction relative to baseline
-  // For normal metrics (higher = better): adverse when mean < baseline * 0.80
-  // For inverse metrics (lower = better): adverse when mean > baseline * 1.20
+  // Adverse change = >15% deviation in the "bad" direction
   function isAdverseWeek(weekMean: number): boolean {
-    if (inverseMetric) {
-      return weekMean > baselineMean * 1.20;
-    }
-    return weekMean < baselineMean * 0.80;
+    const deviation = (weekMean - baselineMean) / (baselineMean || 1);
+    const effectiveDeviation = inverseMetric ? deviation : -deviation;
+    return effectiveDeviation <= CONCERN_PCT; 
   }
 
   let sustainedWeeks = 0;
@@ -125,18 +122,18 @@ export async function detectDecline(
 
   // 5. Compute pctChange from baseline using the most recent week's mean
   const recentMean = weeklyMeans[0] ?? baselineMean;
-  // pctChange: negative = decline for normal metrics; positive for inverse
-  const rawPct = (recentMean - baselineMean) / Math.abs(baselineMean);
-  // Normalise so that negative always means "worse" regardless of metric direction
-  const pctChange = inverseMetric ? rawPct : rawPct;
+  const rawPct = (recentMean - baselineMean) / Math.abs(baselineMean || 1);
+  
+  // normalizedPct: negative = adverse/decline regardless of metric direction
+  const normalizedPct = inverseMetric ? -rawPct : rawPct;
 
   // 6. Severity classification
-  const effectivePct = inverseMetric ? rawPct : -rawPct; // negative = bad for both
   let severity: DeclineSeverity = 'none';
+  const adversePct = -normalizedPct; // positive = amount of decline
 
-  if (effectivePct <= ALERT_PCT && sustainedWeeks >= ALERT_WEEKS) {
+  if (adversePct >= Math.abs(ALERT_PCT) && sustainedWeeks >= ALERT_WEEKS) {
     severity = 'alert';
-  } else if (effectivePct <= CONCERN_PCT && sustainedWeeks >= CONCERN_WEEKS) {
+  } else if (adversePct >= Math.abs(CONCERN_PCT) && sustainedWeeks >= CONCERN_WEEKS) {
     severity = 'concern';
   }
 
@@ -146,7 +143,7 @@ export async function detectDecline(
     metricKey,
     baselineMean,
     recentMean,
-    pctChange,
+    pctChange: normalizedPct,
     sustainedWeeks,
     severity,
   };

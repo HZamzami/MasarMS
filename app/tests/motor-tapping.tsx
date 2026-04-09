@@ -43,8 +43,9 @@ function computeMetrics(taps: TapSample[]) {
 export default function MotorTappingTaskScreen() {
   const router = useRouter();
 
+  const [testMode, setTestMode]       = useState<'selection' | 'countdown' | 'running'>('selection');
+  const [dominantHand, setDominantHand] = useState<boolean | null>(null);
   const [remainingMs, setRemainingMs] = useState(TEST_DURATION_MS);
-  const [isCountingDown, setIsCountingDown] = useState(true);
   const [highlighted, setHighlighted] = useState(false);
   const [status, setStatus]           = useState<'running' | 'saving' | 'error'>('running');
   const [saveError, setSaveError]     = useState<string | null>(null);
@@ -69,7 +70,7 @@ export default function MotorTappingTaskScreen() {
           total_taps:      metrics.totalTaps,
           frequency_hz:    Number(metrics.frequencyHz.toFixed(4)),
           fatigue_index:   Number(metrics.fatigueIndex.toFixed(4)),
-          dominant_hand:   null,
+          dominant_hand:   dominantHand,
           tap_events:      taps.map((t, i) => ({ t: t.timestamp, side: (i % 2 === 0 ? 'L' : 'R') as 'L' | 'R' })),
           duration_seconds: TEST_DURATION_MS / 1000,
         } satisfies FingerTappingData,
@@ -83,10 +84,10 @@ export default function MotorTappingTaskScreen() {
         : msg);
       setStatus('error');
     }
-  }, [router]);
+  }, [router, dominantHand]);
 
   useEffect(() => {
-    if (isCountingDown) return;
+    if (testMode !== 'running') return;
     const step = (now: number) => {
       if (startedAtRef.current === null) startedAtRef.current = now;
       const elapsed   = now - startedAtRef.current;
@@ -107,10 +108,10 @@ export default function MotorTappingTaskScreen() {
     return () => {
       if (frameIdRef.current !== null) cancelAnimationFrame(frameIdRef.current);
     };
-  }, [persistObservation, isCountingDown]);
+  }, [persistObservation, testMode]);
 
   const handleTap = useCallback(() => {
-    if (status !== 'running' || isFinishedRef.current || isCountingDown) return;
+    if (status !== 'running' || isFinishedRef.current || testMode !== 'running') return;
     if (startedAtRef.current === null) return;
 
     const tapTimestamp = performance.now() - startedAtRef.current;
@@ -121,7 +122,7 @@ export default function MotorTappingTaskScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     setTimeout(() => setHighlighted(false), 80);
-  }, [status]);
+  }, [status, testMode]);
 
   const timerLabel  = useMemo(() => formatCountdown(remainingMs), [remainingMs]);
   const tapCount    = tapsRef.current.length;
@@ -130,126 +131,176 @@ export default function MotorTappingTaskScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
-      {isCountingDown && (
-        <CountdownOverlay onFinished={() => setIsCountingDown(false)} />
+      {testMode === 'selection' && (
+        <View className="flex-1 px-8 justify-center">
+          <View className="w-20 h-20 rounded-3xl bg-primary-container items-center justify-center mb-8 self-center">
+            <Ionicons name="hand-left-outline" size={44} color="#006880" />
+          </View>
+          <Text className="text-2xl font-extrabold text-on-surface text-center mb-4">
+            Select Hand
+          </Text>
+          <Text className="text-on-surface-variant text-center leading-relaxed mb-10">
+            Which hand will you be using for this 10-second tapping assessment?
+          </Text>
+          
+          <View style={{ gap: 12 }} className="mb-10">
+            <TouchableOpacity
+              onPress={() => { setDominantHand(true); setTestMode('countdown'); }}
+              className="w-full bg-surface-container-low border-2 border-primary/20 rounded-2xl p-5 flex-row items-center"
+            >
+              <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mr-4">
+                <Ionicons name="star" size={20} color="#f1faff" />
+              </View>
+              <Text className="text-lg font-bold text-on-surface">Dominant Hand</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => { setDominantHand(false); setTestMode('countdown'); }}
+              className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-2xl p-5 flex-row items-center"
+            >
+              <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center mr-4">
+                <Ionicons name="hand-right-outline" size={20} color="#576065" />
+              </View>
+              <Text className="text-lg font-bold text-on-surface">Non-Dominant Hand</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity onPress={() => router.back()} className="items-center">
+            <Text className="text-on-surface-variant font-bold">Cancel</Text>
+          </TouchableOpacity>
+        </View>
       )}
-      <View className="flex-1 px-6 pb-6">
 
-        {/* Header */}
-        <View className="flex-row items-center justify-between py-4">
-          <View className="flex-row items-center" style={{ gap: 10 }}>
+      {testMode === 'countdown' && (
+        <View className="flex-1">
+          <View className="flex-1 opacity-20">
+            {/* Background running UI */}
+            <View className="flex-1 px-6 items-center justify-center">
+               <View className="w-40 h-40 rounded-full bg-surface-container-highest" />
+            </View>
+          </View>
+          <CountdownOverlay onFinished={() => setTestMode('running')} />
+        </View>
+      )}
+
+      {testMode === 'running' && (
+        <View className="flex-1 px-6 pb-6">
+          {/* Header */}
+          <View className="flex-row items-center justify-between py-4">
+            <View className="flex-row items-center" style={{ gap: 10 }}>
+              <Pressable
+                className="w-10 h-10 rounded-full items-center justify-center"
+                onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                hitSlop={20}
+              >
+                <Ionicons name="arrow-back" size={24} color="#006880" />
+              </Pressable>
+              <Text className="text-xl font-bold text-on-surface">Finger Tapping</Text>
+            </View>
+
+            <View className="bg-surface-container px-3 py-1.5 rounded-full">
+              <Text className="text-xs font-bold text-on-surface-variant">
+                {tapCount} taps · {dominantHand ? 'Dom' : 'Non-Dom'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Timer */}
+          <View className="mt-2 rounded-3xl bg-surface-container-low px-8 py-6 items-center">
+            <View className="flex-row items-center" style={{ gap: 8 }}>
+              <Ionicons name="timer-outline" size={16} color="#006880" />
+              <Text className="text-sm font-semibold tracking-widest uppercase text-on-surface-variant">
+                Time Remaining
+              </Text>
+            </View>
+            <Text className="mt-2 font-extrabold text-primary" style={{ fontSize: 64, lineHeight: 72 }}>
+              {timerLabel}
+            </Text>
+
+            {/* Progress track */}
+            <View className="w-full mt-4 h-2 bg-surface-container-highest rounded-full overflow-hidden">
+              <View
+                className="h-full bg-primary rounded-full"
+                style={{ width: `${pct * 100}%` }}
+              />
+            </View>
+          </View>
+
+          {/* Instructions */}
+          <View className="items-center mt-8">
+            <Text className="text-xl font-bold text-on-surface mb-2">
+              Tap as fast as you can
+            </Text>
+            <Text className="text-center text-on-surface-variant text-sm leading-6 px-4">
+              Use your <Text className="font-bold text-primary">index finger</Text> to tap
+              the button below repeatedly for 10 seconds.
+            </Text>
+          </View>
+
+          {/* Single tap button */}
+          <View className="flex-1 items-center justify-center">
             <Pressable
-              className="w-10 h-10 rounded-full items-center justify-center"
-              onPress={() => router.back()}
+              disabled={isDisabled}
+              onPressIn={handleTap}
+              hitSlop={24}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
-              hitSlop={20}
+              accessibilityLabel="Tap here"
+              style={({ pressed }) => ({
+                width: 180,
+                height: 180,
+                borderRadius: 90,
+                backgroundColor: highlighted ? '#72d9fd' : '#dbe4e9',
+                borderWidth: 4,
+                borderColor: 'rgba(0,104,128,0.12)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transform: [{ scale: highlighted ? 0.92 : 1 }],
+                shadowColor: '#006880',
+                shadowOpacity: highlighted ? 0.22 : 0.06,
+                shadowRadius: highlighted ? 20 : 10,
+                elevation: highlighted ? 8 : 3,
+                opacity: isDisabled ? 0.5 : 1,
+              })}
             >
-              <Ionicons name="arrow-back" size={24} color="#006880" />
+              <Ionicons name="hand-left" size={64} color="#006880" />
             </Pressable>
-            <Text className="text-xl font-bold text-on-surface">Finger Tapping</Text>
           </View>
 
-          <View className="bg-surface-container px-3 py-1.5 rounded-full">
-            <Text className="text-xs font-bold text-on-surface-variant">
-              {tapCount} taps
-            </Text>
-          </View>
-        </View>
-
-        {/* Timer */}
-        <View className="mt-2 rounded-3xl bg-surface-container-low px-8 py-6 items-center">
-          <View className="flex-row items-center" style={{ gap: 8 }}>
-            <Ionicons name="timer-outline" size={16} color="#006880" />
-            <Text className="text-sm font-semibold tracking-widest uppercase text-on-surface-variant">
-              Time Remaining
-            </Text>
-          </View>
-          <Text className="mt-2 font-extrabold text-primary" style={{ fontSize: 64, lineHeight: 72 }}>
-            {timerLabel}
-          </Text>
-
-          {/* Progress track */}
-          <View className="w-full mt-4 h-2 bg-surface-container-highest rounded-full overflow-hidden">
-            <View
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${pct * 100}%` }}
-            />
-          </View>
-        </View>
-
-        {/* Instructions */}
-        <View className="items-center mt-8">
-          <Text className="text-xl font-bold text-on-surface mb-2">
-            Tap as fast as you can
-          </Text>
-          <Text className="text-center text-on-surface-variant text-sm leading-6 px-4">
-            Use your <Text className="font-bold text-primary">index finger</Text> to tap
-            the button below repeatedly for 10 seconds.
-          </Text>
-        </View>
-
-        {/* Single tap button */}
-        <View className="flex-1 items-center justify-center">
-          <Pressable
-            disabled={isDisabled}
-            onPressIn={handleTap}
-            hitSlop={24}
-            accessibilityRole="button"
-            accessibilityLabel="Tap here"
-            style={({ pressed }) => ({
-              width: 180,
-              height: 180,
-              borderRadius: 90,
-              backgroundColor: highlighted ? '#72d9fd' : '#dbe4e9',
-              borderWidth: 4,
-              borderColor: 'rgba(0,104,128,0.12)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transform: [{ scale: highlighted ? 0.92 : 1 }],
-              shadowColor: '#006880',
-              shadowOpacity: highlighted ? 0.22 : 0.06,
-              shadowRadius: highlighted ? 20 : 10,
-              elevation: highlighted ? 8 : 3,
-              opacity: isDisabled ? 0.5 : 1,
-            })}
+          {/* Tip */}
+          <View
+            className="rounded-2xl px-4 py-4 flex-row items-center"
+            style={{ gap: 12, backgroundColor: 'rgba(101,253,230,0.15)', borderWidth: 1, borderColor: 'rgba(0,107,96,0.1)' }}
           >
-            <Ionicons name="hand-left" size={64} color="#006880" />
-          </Pressable>
-        </View>
+            <View className="w-8 h-8 rounded-lg bg-tertiary items-center justify-center">
+              <Ionicons name="information-circle" size={16} color="#e2fff8" />
+            </View>
+            <Text className="flex-1 text-sm font-medium text-on-tertiary-container">
+              Rest your wrist on a flat surface. Tap with your {dominantHand ? 'dominant' : 'non-dominant'} hand's index finger.
+            </Text>
+          </View>
 
-        {/* Tip */}
-        <View
-          className="rounded-2xl px-4 py-4 flex-row items-center"
-          style={{ gap: 12, backgroundColor: 'rgba(101,253,230,0.15)', borderWidth: 1, borderColor: 'rgba(0,107,96,0.1)' }}
-        >
-          <View className="w-8 h-8 rounded-lg bg-tertiary items-center justify-center">
-            <Ionicons name="information-circle" size={16} color="#e2fff8" />
-          </View>
-          <Text className="flex-1 text-sm font-medium text-on-tertiary-container">
-            Rest your wrist on a flat surface. Tap with your dominant hand's index finger.
-          </Text>
+          {/* Status messages */}
+          {status === 'saving' && (
+            <View className="items-center mt-4">
+              <Text className="text-sm text-primary">Saving result…</Text>
+            </View>
+          )}
+          {status === 'error' && (
+            <View className="items-center mt-4">
+              <Text className="text-xs text-error text-center mb-2">{saveError}</Text>
+              <Pressable
+                className="px-5 py-2.5 rounded-full bg-primary"
+                onPress={() => void persistObservation()}
+                hitSlop={20}
+              >
+                <Text className="text-on-primary font-semibold">Retry Save</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
-
-        {/* Status messages */}
-        {status === 'saving' && (
-          <View className="items-center mt-4">
-            <Text className="text-sm text-primary">Saving result…</Text>
-          </View>
-        )}
-        {status === 'error' && (
-          <View className="items-center mt-4">
-            <Text className="text-xs text-error text-center mb-2">{saveError}</Text>
-            <Pressable
-              className="px-5 py-2.5 rounded-full bg-primary"
-              onPress={() => void persistObservation()}
-              hitSlop={20}
-            >
-              <Text className="text-on-primary font-semibold">Retry Save</Text>
-            </Pressable>
-          </View>
-        )}
-      </View>
+      )}
     </SafeAreaView>
   );
 }
