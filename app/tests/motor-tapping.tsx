@@ -184,11 +184,12 @@ export default function MotorTappingTaskScreen() {
           <View className="flex-row items-center" style={{ gap: 10 }}>
             <Pressable
               className="w-10 h-10 rounded-full items-center justify-center"
+              onPress={() => router.back()}
               accessibilityRole="button"
-              accessibilityLabel="Open menu"
+              accessibilityLabel="Go back"
               hitSlop={20}
             >
-              <Ionicons name="menu-outline" size={24} color="#006880" />
+              <Ionicons name="arrow-back" size={24} color="#006880" />
             </Pressable>
             <Text className="text-xl font-bold text-primary">MasarMS</Text>
           </View>
