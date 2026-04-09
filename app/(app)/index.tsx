@@ -1,5 +1,4 @@
-import { Text, View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,6 +104,24 @@ export default function HomeScreen() {
             <Text className="text-on-primary font-bold text-lg">Contrast Sensitivity</Text>
             <Text className="text-on-primary text-sm" style={{ opacity: 0.75 }}>
               Vision staircase test
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="white" />
+        </TouchableOpacity>
+
+        {/* Database testing launch card */}
+        <TouchableOpacity
+          className="bg-primary rounded-3xl p-6"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+          onPress={() => router.push('/database-testing')}
+          accessibilityRole="button"
+          accessibilityLabel="Open database testing page"
+        >
+          <Ionicons name="server-outline" size={36} color="white" />
+          <View style={{ flex: 1 }}>
+            <Text className="text-on-primary font-bold text-lg">Database Testing</Text>
+            <Text className="text-on-primary text-sm" style={{ opacity: 0.75 }}>
+              View saved results from all test tables
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="white" />
