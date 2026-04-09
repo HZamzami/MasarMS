@@ -99,6 +99,75 @@ export interface VisionContrastData {
   test_version: string;
 }
 
+// ─── Clinical analytics types ─────────────────────────────────────────────────
+
+export interface BaselineStats {
+  domain: MsDomain;
+  testType: string;
+  /** The JSONB field name used as the primary metric (e.g. 'ips_score') */
+  metricKey: string;
+  mean: number;
+  variance: number;
+  stdDev: number;
+  sampleCount: number;
+}
+
+export interface TestScheduleItem {
+  testType: string;
+  domain: MsDomain;
+  label: string;
+  route: string;
+  /** Target frequency in days (1 = daily, 7 = weekly, 14 = biweekly) */
+  intervalDays: number;
+  lastCompletedAt: string | null;
+  /** Negative value means overdue */
+  daysUntilDue: number;
+  isDueToday: boolean;
+  isOverdue: boolean;
+}
+
+export type DeclineSeverity = 'none' | 'concern' | 'alert';
+
+export interface DeclineReport {
+  domain: MsDomain;
+  testType: string;
+  metricKey: string;
+  baselineMean: number;
+  recentMean: number;
+  /** Negative = decline (e.g. -0.22 means 22% below baseline) */
+  pctChange: number;
+  sustainedWeeks: number;
+  severity: DeclineSeverity;
+}
+
+export interface StreakInfo {
+  currentStreak: number;
+  longestStreak: number;
+  /** ISO date key 'YYYY-MM-DD' of last active day, or null */
+  lastActiveDateKey: string | null;
+}
+
+export type BadgeType =
+  | 'first_test'
+  | 'streak_7'
+  | 'streak_30'
+  | 'baseline_complete'
+  | 'all_domains_day'
+  | 'sessions_10'
+  | 'sessions_50';
+
+export interface Badge {
+  type: BadgeType;
+  label: string;
+  /** Ionicons icon name */
+  icon: string;
+  description: string;
+  earned: boolean;
+  earnedAt: string | null;
+}
+
+// ─── Per-test JSONB data shapes ───────────────────────────────────────────────
+
 export interface DailyEMAData {
   /** 0–4 ordinal: Very Poor=0, Poor=1, Neutral=2, Good=3, Great=4 */
   mood_index: number;

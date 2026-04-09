@@ -64,4 +64,14 @@ export async function saveTestResult(opts: SaveOptions): Promise<void> {
   });
 
   if (error) throw error;
+
+  // Stamp baseline_completed_at the first time a result lands in longitudinal phase.
+  // .is('baseline_completed_at', null) ensures we only write it once, never overwrite.
+  if (phase === 'longitudinal') {
+    await supabase
+      .from('profiles')
+      .update({ baseline_completed_at: new Date().toISOString() })
+      .eq('id', user.id)
+      .is('baseline_completed_at', null);
+  }
 }
