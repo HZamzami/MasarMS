@@ -45,7 +45,7 @@ function computeMetrics(taps: TapSample[]) {
 
 export default function MotorTappingTaskScreen() {
   const router = useRouter();
-  const { backIcon, formatMessage, formatNumber, messages } = useLocalization();
+  const { backIcon, formatMessage, formatNumber, messages, row } = useLocalization();
 
   const [testMode, setTestMode]       = useState<'selection' | 'countdown' | 'running'>('selection');
   const [dominantHand, setDominantHand] = useState<boolean | null>(null);
@@ -152,6 +152,7 @@ export default function MotorTappingTaskScreen() {
             <TouchableOpacity
               onPress={() => { setDominantHand(true); setTestMode('countdown'); }}
               className="w-full bg-surface-container-low border-2 border-primary/20 rounded-2xl p-5 flex-row items-center"
+              style={row}
             >
               <View className="w-10 h-10 rounded-full bg-primary items-center justify-center me-4">
                 <Ionicons name="star" size={20} color="#f1faff" />
@@ -162,6 +163,7 @@ export default function MotorTappingTaskScreen() {
             <TouchableOpacity
               onPress={() => { setDominantHand(false); setTestMode('countdown'); }}
               className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-2xl p-5 flex-row items-center"
+              style={row}
             >
               <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center me-4">
                 <Ionicons name="hand-right-outline" size={20} color="#576065" />
@@ -191,8 +193,8 @@ export default function MotorTappingTaskScreen() {
       {testMode === 'running' && (
         <View className="flex-1 px-6 pb-6">
           {/* Header */}
-          <View className="flex-row items-center justify-between py-4">
-            <View className="flex-row items-center" style={{ gap: 10 }}>
+          <View className="flex-row items-center justify-between py-4" style={row}>
+            <View className="flex-row items-center" style={[{ gap: 10 }, row]}>
               <Pressable
                 className="w-10 h-10 rounded-full items-center justify-center"
                 onPress={() => router.back()}
@@ -217,7 +219,7 @@ export default function MotorTappingTaskScreen() {
 
           {/* Timer */}
           <View className="mt-2 rounded-3xl bg-surface-container-low px-8 py-6 items-center">
-            <View className="flex-row items-center" style={{ gap: 8 }}>
+            <View className="flex-row items-center" style={[{ gap: 8 }, row]}>
               <Ionicons name="timer-outline" size={16} color="#006880" />
               <Text className="text-sm font-semibold tracking-widest uppercase text-on-surface-variant">
                 {messages.common.timeRemaining}
@@ -278,7 +280,7 @@ export default function MotorTappingTaskScreen() {
           {/* Tip */}
           <View
             className="rounded-2xl px-4 py-4 flex-row items-center"
-            style={{ gap: 12, backgroundColor: 'rgba(101,253,230,0.15)', borderWidth: 1, borderColor: 'rgba(0,107,96,0.1)' }}
+            style={[{ gap: 12, backgroundColor: 'rgba(101,253,230,0.15)', borderWidth: 1, borderColor: 'rgba(0,107,96,0.1)' }, row]}
           >
             <View className="w-8 h-8 rounded-lg bg-tertiary items-center justify-center">
               <Ionicons name="information-circle" size={16} color="#e2fff8" />

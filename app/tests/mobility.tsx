@@ -28,7 +28,11 @@ type TestState = 'PREPARE' | 'ACTIVE' | 'SAVING' | 'SUMMARY';
 
 type MobilitySummary = {
   uTurnCount: number;
+  stepCount: number;
+  cadenceStepsPerMin: number;
   averageAcceleration: number;
+  peakAcceleration: number;
+  accelerationCv: number;
   meanResultantAccelerationBySecond: number[];
   durationSeconds: number;
 };
@@ -39,6 +43,10 @@ const ACTIVE_DURATION_MS = 120_000;
 const SENSOR_UPDATE_INTERVAL_MS = 100;
 const UTURN_RAD_THRESHOLD = Math.PI;
 const UTURN_COOLDOWN_MS = 1_200;
+/** Acceleration magnitude (m/s²) a sample must exceed to qualify as a step peak. ~1.12 g. */
+const STEP_THRESHOLD = 11.0;
+/** Minimum ms between two detected steps — prevents double-counting. */
+const STEP_DEBOUNCE_MS = 300;
 
 function formatMmSs(totalMs: number) {
   const safeMs = Math.max(0, totalMs);
@@ -66,10 +74,11 @@ function extractErrorMessage(
 
 export default function MobilityTestScreen() {
   const router = useRouter();
-  const { backIcon, formatMessage, messages } = useLocalization();
+  const { backIcon, formatMessage, messages, row } = useLocalization();
 
   const [testState, setTestState] = useState<TestState>('PREPARE');
   const [activeRemainingMs, setActiveRemainingMs] = useState(ACTIVE_DURATION_MS);
+  const [stepCount, setStepCount] = useState(0);
   const [summary, setSummary] = useState<MobilitySummary | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [sensorUnavailable, setSensorUnavailable] = useState(false);
@@ -94,6 +103,14 @@ export default function MobilityTestScreen() {
     integratedRadians: 0,
     lastDetectedTurnAt: 0,
     uTurnCount: 0,
+  });
+
+  const stepDetectionRef = useRef({
+    prevMagnitude: 0,
+    prevWasRising: false,
+    lastStepAt: 0,
+    stepCount: 0,
+    peakAcceleration: 0,
   });
 
   const pulseScale = useRef(new Animated.Value(1)).current;
@@ -130,6 +147,14 @@ export default function MobilityTestScreen() {
       lastDetectedTurnAt: 0,
       uTurnCount: 0,
     };
+    stepDetectionRef.current = {
+      prevMagnitude: 0,
+      prevWasRising: false,
+      lastStepAt: 0,
+      stepCount: 0,
+      peakAcceleration: 0,
+    };
+    setStepCount(0);
   }, []);
 
   const handleAccelerometerSample = useCallback((reading: AccelerometerMeasurement) => {
@@ -140,14 +165,13 @@ export default function MobilityTestScreen() {
       (reading.z * reading.z),
     ) * 9.81;
 
+    // ── Per-second windowed mean ──────────────────────────────────────────────
     const window = accelerationWindowRef.current;
     if (window.windowStartedAt === 0) {
       window.windowStartedAt = now;
     }
-
     window.sum += magnitudeMs2;
     window.count += 1;
-
     if ((now - window.windowStartedAt) >= 1_000) {
       if (window.count > 0) {
         window.means.push(window.sum / window.count);
@@ -156,6 +180,30 @@ export default function MobilityTestScreen() {
       window.sum = 0;
       window.count = 0;
     }
+
+    // ── Step detection (peak-based) ───────────────────────────────────────────
+    const sd = stepDetectionRef.current;
+
+    // Track peak acceleration
+    if (magnitudeMs2 > sd.peakAcceleration) {
+      sd.peakAcceleration = magnitudeMs2;
+    }
+
+    const isRising = magnitudeMs2 > sd.prevMagnitude;
+    // Detect a falling edge after a rising peak that exceeded the threshold
+    if (
+      sd.prevWasRising &&
+      !isRising &&
+      sd.prevMagnitude > STEP_THRESHOLD &&
+      (now - sd.lastStepAt) >= STEP_DEBOUNCE_MS
+    ) {
+      sd.stepCount += 1;
+      sd.lastStepAt = now;
+      setStepCount(sd.stepCount);
+    }
+
+    sd.prevMagnitude = magnitudeMs2;
+    sd.prevWasRising = isRising;
   }, []);
 
   const handleGyroscopeSample = useCallback((reading: GyroscopeMeasurement) => {
@@ -242,11 +290,26 @@ export default function MobilityTestScreen() {
       ? meanPerSecond.reduce((total, value) => total + value, 0) / meanPerSecond.length
       : 0;
 
+    // Coefficient of variation = std_dev / mean × 100
+    let accelerationCv = 0;
+    if (meanPerSecond.length >= 2 && averageAcceleration > 0) {
+      const variance = meanPerSecond.reduce((s, v) => s + (v - averageAcceleration) ** 2, 0) / meanPerSecond.length;
+      accelerationCv = (Math.sqrt(variance) / averageAcceleration) * 100;
+    }
+
+    const durationSeconds = elapsedMs / 1000;
+    const sd = stepDetectionRef.current;
+    const cadenceStepsPerMin = durationSeconds > 0 ? (sd.stepCount / durationSeconds) * 60 : 0;
+
     return {
       uTurnCount: turnDetectionRef.current.uTurnCount,
+      stepCount: sd.stepCount,
+      cadenceStepsPerMin,
       averageAcceleration,
+      peakAcceleration: sd.peakAcceleration,
+      accelerationCv,
       meanResultantAccelerationBySecond: meanPerSecond,
-      durationSeconds: elapsedMs / 1000,
+      durationSeconds,
     };
   }, []);
 
@@ -261,7 +324,11 @@ export default function MobilityTestScreen() {
         testType: '2MWT',
         data: {
           u_turn_count: result.uTurnCount,
+          step_count: result.stepCount,
+          cadence_steps_per_min: Number(result.cadenceStepsPerMin.toFixed(1)),
           average_acceleration: Number(result.averageAcceleration.toFixed(4)),
+          peak_acceleration: Number(result.peakAcceleration.toFixed(4)),
+          acceleration_cv: Number(result.accelerationCv.toFixed(2)),
           mean_resultant_acceleration_by_second: result.meanResultantAccelerationBySecond.map(
             (v) => Number(v.toFixed(4)),
           ),
@@ -417,11 +484,18 @@ export default function MobilityTestScreen() {
         </View>
       </View>
 
-      {/* Walking label */}
-      <View className="bg-[#65fde6]/35 px-6 py-1.5 rounded-full">
-        <Text className="text-tertiary text-base font-bold tracking-widest uppercase">
-          {messages.mobility.walking}
-        </Text>
+      {/* Walking label + live step count */}
+      <View className="flex-row items-center" style={[{ gap: 12 }, row]}>
+        <View className="bg-[#65fde6]/35 px-5 py-1.5 rounded-full">
+          <Text className="text-tertiary text-base font-bold tracking-widest uppercase">
+            {messages.mobility.walking}
+          </Text>
+        </View>
+        <View className="bg-surface-container rounded-full px-4 py-1.5 flex-row items-center" style={[{ gap: 6 }, row]}>
+          <Ionicons name="footsteps-outline" size={14} color="#006880" />
+          <Text className="text-sm font-extrabold text-primary tabular-nums">{stepCount}</Text>
+          <Text className="text-xs text-on-surface-variant">{messages.mobility.stepCount}</Text>
+        </View>
       </View>
 
       {/* Instructions */}
@@ -461,7 +535,7 @@ export default function MobilityTestScreen() {
         accessibilityRole="button"
         accessibilityLabel={messages.mobility.stopA11y}
       >
-        <View className="flex-row items-center" style={{ gap: 10 }}>
+        <View className="flex-row items-center" style={[{ gap: 10 }, row]}>
           <Ionicons name="stop-circle" size={26} color="#fff7f6" />
           <Text className="text-on-error text-xl font-extrabold tracking-widest uppercase">
             {messages.mobility.stop}
@@ -485,7 +559,11 @@ export default function MobilityTestScreen() {
 
   const renderSummary = () => {
     const uTurnCount = summary?.uTurnCount ?? 0;
+    const steps = summary?.stepCount ?? 0;
+    const cadence = summary?.cadenceStepsPerMin ?? 0;
     const averageAcceleration = summary?.averageAcceleration ?? 0;
+    const peakAcceleration = summary?.peakAcceleration ?? 0;
+    const accelerationCv = summary?.accelerationCv ?? 0;
     const durationSeconds = summary?.durationSeconds ?? 0;
 
     return (
@@ -498,7 +576,7 @@ export default function MobilityTestScreen() {
         {/* Success banner */}
         <View
           className="bg-[#72d9fd]/30 rounded-2xl p-4 flex-row items-center"
-          style={{ gap: 12 }}
+          style={[{ gap: 12 }, row]}
         >
           <View className="w-10 h-10 rounded-full items-center justify-center bg-tertiary">
             <Ionicons name="checkmark-circle" size={22} color="#e2fff8" />
@@ -511,45 +589,63 @@ export default function MobilityTestScreen() {
           </View>
         </View>
 
-        {/* Stats row */}
-        <View className="flex-row" style={{ gap: 12 }}>
-          <View className="flex-1 bg-surface-container-low rounded-2xl p-4 items-center" style={{ gap: 4 }}>
-            <Text className="text-xs uppercase tracking-wider text-on-surface-variant text-center">
-              {messages.mobility.uTurnCount}
-            </Text>
-            <Text className="text-4xl font-extrabold text-primary">{uTurnCount}</Text>
+        {/* Stats 2×2 grid */}
+        <View style={{ gap: 10 }}>
+          <View className="flex-row" style={[{ gap: 10 }, row]}>
+            <View className="flex-1 bg-surface-container-low rounded-2xl p-4 items-center" style={{ gap: 3 }}>
+              <Text className="text-[10px] uppercase tracking-wider text-on-surface-variant text-center">
+                {messages.mobility.uTurnCount}
+              </Text>
+              <Text className="text-3xl font-extrabold text-primary">{uTurnCount}</Text>
+            </View>
+            <View className="flex-1 bg-surface-container-low rounded-2xl p-4 items-center" style={{ gap: 3 }}>
+              <Text className="text-[10px] uppercase tracking-wider text-on-surface-variant text-center">
+                {messages.mobility.stepCount}
+              </Text>
+              <Text className="text-3xl font-extrabold text-primary">{steps}</Text>
+            </View>
           </View>
-
-          <View className="flex-1 bg-surface-container-low rounded-2xl p-4 items-center" style={{ gap: 4 }}>
-            <Text className="text-xs uppercase tracking-wider text-on-surface-variant text-center">
-              {messages.mobility.averageAcceleration}
-            </Text>
-            <Text className="text-4xl font-extrabold text-on-surface">
-              {averageAcceleration.toFixed(1)}
-            </Text>
-            <Text className="text-xs font-medium text-tertiary">{messages.mobility.accelerationUnit}</Text>
+          <View className="flex-row" style={[{ gap: 10 }, row]}>
+            <View className="flex-1 bg-surface-container-low rounded-2xl p-4 items-center" style={{ gap: 3 }}>
+              <Text className="text-[10px] uppercase tracking-wider text-on-surface-variant text-center">
+                {messages.mobility.cadence}
+              </Text>
+              <Text className="text-3xl font-extrabold text-on-surface">{cadence.toFixed(0)}</Text>
+              <Text className="text-[10px] font-medium text-tertiary">{messages.mobility.cadenceUnit}</Text>
+            </View>
+            <View className="flex-1 bg-surface-container-low rounded-2xl p-4 items-center" style={{ gap: 3 }}>
+              <Text className="text-[10px] uppercase tracking-wider text-on-surface-variant text-center">
+                {messages.mobility.averageAcceleration}
+              </Text>
+              <Text className="text-3xl font-extrabold text-on-surface">{averageAcceleration.toFixed(1)}</Text>
+              <Text className="text-[10px] font-medium text-tertiary">{messages.mobility.accelerationUnit}</Text>
+            </View>
           </View>
         </View>
 
         {/* Session info */}
         <View
           className="bg-surface-container-lowest rounded-2xl p-4"
-          style={{ borderWidth: 1, borderColor: '#dce4e6' }}
+          style={{ borderWidth: 1, borderColor: '#dce4e6', gap: 4 }}
         >
-          <Text className="text-sm font-bold text-on-surface mb-1">
+          <Text className="text-sm font-bold text-on-surface">
             {messages.mobility.performanceInsights}
           </Text>
-          <Text className="text-sm text-on-surface-variant">
-            {formatMessage(messages.mobility.sessionLength, {
-              seconds: durationSeconds.toFixed(1),
-            })}
+          <Text className="text-xs text-on-surface-variant">
+            {formatMessage(messages.mobility.sessionLength, { seconds: durationSeconds.toFixed(1) })}
+          </Text>
+          <Text className="text-xs text-on-surface-variant">
+            {formatMessage(messages.mobility.peakAccelLine, { value: peakAcceleration.toFixed(2) })}
+          </Text>
+          <Text className="text-xs text-on-surface-variant">
+            {formatMessage(messages.mobility.variabilityLine, { value: accelerationCv.toFixed(1) })}
           </Text>
           {saveError ? (
-            <Text className="text-xs text-error mt-2">
+            <Text className="text-xs text-error mt-1">
               {formatMessage(messages.mobility.savedLocallyOnly, { error: saveError })}
             </Text>
           ) : (
-            <Text className="text-xs text-tertiary mt-2">
+            <Text className="text-xs text-tertiary mt-1">
               {messages.mobility.observationSaved}
             </Text>
           )}
@@ -579,8 +675,8 @@ export default function MobilityTestScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <LanguageToggleBar />
-      <View className="h-16 bg-surface-container-low px-6 flex-row items-center justify-between">
-        <View className="flex-row items-center" style={{ gap: 10 }}>
+      <View className="h-16 bg-surface-container-low px-6 flex-row items-center justify-between" style={row}>
+        <View className="flex-row items-center" style={[{ gap: 10 }, row]}>
           <TouchableOpacity
             onPress={() => router.back()}
             hitSlop={20}

@@ -69,7 +69,7 @@ function ResultCard({
   trials: TrialResult[];
   onDone: () => void;
 }) {
-  const { messages } = useLocalization();
+  const { messages, row } = useLocalization();
   const successCount = trials.filter((t) => t.success).length;
   const accuracyPct  = Math.round((successCount / trials.length) * 100);
   const errors       = trials.map((t) => t.errorPx);
@@ -123,7 +123,7 @@ function ResultCard({
           </View>
         </View>
 
-        <View className="flex-row" style={{ gap: 10 }}>
+        <View className="flex-row" style={[{ gap: 10 }, row]}>
           <View className="flex-1 bg-surface-container-high rounded-2xl p-4 items-center">
             <Text className="text-2xl font-extrabold text-primary">{successCount}/{trials.length}</Text>
             <Text className="text-xs text-on-surface-variant mt-1">{messages.pinchDrag.successful}</Text>
@@ -156,7 +156,7 @@ function ResultCard({
 export default function PinchDragScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
-  const { backIcon, formatMessage, messages } = useLocalization();
+  const { backIcon, formatMessage, messages, row } = useLocalization();
 
   const [screenState, setScreenState] = useState<ScreenState>('instructions');
   const [dominantHand, setDominantHand] = useState<boolean | null>(null);
@@ -291,9 +291,9 @@ export default function PinchDragScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-6 py-4"
-        style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.25)' }}
+        style={[{ borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.25)' }, row]}
       >
-        <View className="flex-row items-center" style={{ gap: 12 }}>
+        <View className="flex-row items-center" style={[{ gap: 12 }, row]}>
           <TouchableOpacity
             onPress={() => router.back()}
             hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
@@ -393,6 +393,7 @@ export default function PinchDragScreen() {
             <TouchableOpacity
               onPress={() => { setDominantHand(true); setScreenState('countdown'); }}
               className="w-full bg-surface-container-low border-2 border-primary/20 rounded-2xl p-5 flex-row items-center"
+              style={row}
             >
               <View className="w-10 h-10 rounded-full bg-primary items-center justify-center me-4">
                 <Ionicons name="star" size={20} color="#f1faff" />
@@ -403,6 +404,7 @@ export default function PinchDragScreen() {
             <TouchableOpacity
               onPress={() => { setDominantHand(false); setScreenState('countdown'); }}
               className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-2xl p-5 flex-row items-center"
+              style={row}
             >
               <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center me-4">
                 <Ionicons name="hand-right-outline" size={20} color="#576065" />
@@ -434,7 +436,7 @@ export default function PinchDragScreen() {
             style={{ gap: 12 }}
           >
             {messages.pinchDrag.instructionSteps.map((tip, i) => (
-              <View key={i} className="flex-row items-center" style={{ gap: 12 }}>
+              <View key={i} className="flex-row items-center" style={[{ gap: 12 }, row]}>
                 <View className="w-6 h-6 rounded-full bg-primary items-center justify-center">
                   <Text className="text-on-primary font-bold text-xs">{i + 1}</Text>
                 </View>
@@ -505,15 +507,18 @@ export default function PinchDragScreen() {
 
           {/* Instructions overlay */}
           <View
-            style={{ position: 'absolute', bottom: 40, left: 0, right: 0 }}
+            style={{ position: 'absolute', top: 20, left: 0, right: 0 }}
             className="items-center"
+            pointerEvents="none"
           >
-            <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">
-              {formatMessage(messages.pinchDrag.trialInstruction, {
-                current: trials.length + 1,
-                total: TOTAL_TRIALS,
-              })}
-            </Text>
+            <View className="bg-surface-container-highest/90 px-4 py-2 rounded-full shadow-sm border border-outline-variant/20">
+              <Text className="text-xs font-bold text-primary uppercase tracking-widest">
+                {formatMessage(messages.pinchDrag.trialInstruction, {
+                  current: trials.length + 1,
+                  total: TOTAL_TRIALS,
+                })}
+              </Text>
+            </View>
           </View>
         </View>
       )}

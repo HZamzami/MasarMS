@@ -263,7 +263,7 @@ export default function DailyCheckin() {
                     {messages.dailyCheckin.moodRequiredError}
                   </Text>
                 ) : null}
-                <View className="flex-row" style={{ gap: 8 }}>
+                <View className="flex-row" style={[{ gap: 8 }, row]}>
                   {MOODS.map((item, index) => (
                     <MoodButton
                       key={item.value}

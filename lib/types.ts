@@ -85,7 +85,11 @@ export interface FingerTappingData {
 
 export interface MobilityData {
   u_turn_count: number;
+  step_count: number;
+  cadence_steps_per_min: number;
   average_acceleration: number;
+  peak_acceleration: number;
+  acceleration_cv: number;
   mean_resultant_acceleration_by_second: number[];
   duration_seconds: number;
   sensor_available: boolean;

@@ -150,6 +150,7 @@ function TrendCard({
   readingsLabel: (count: number) => string;
   accessibilityLabel: string;
 }) {
+  const { row } = useLocalization();
   const latest   = trend.points[trend.points.length - 1];
   const arrow    = trendArrow(trend.points, trend.higherIsBetter);
 
@@ -166,13 +167,13 @@ function TrendCard({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <View className="flex-row items-start justify-between mb-4">
+      <View className="flex-row items-start justify-between mb-4" style={row}>
         <View>
           <Text className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-0.5">
             {trend.label}
           </Text>
           {latest ? (
-            <View className="flex-row items-baseline" style={{ gap: 4 }}>
+            <View className="flex-row items-baseline" style={[{ gap: 4 }, row]}>
               <Text className="font-extrabold text-on-surface" style={{ fontSize: 28, lineHeight: 32 }}>
                 {latest.value}
               </Text>
@@ -183,7 +184,7 @@ function TrendCard({
           )}
         </View>
 
-        <View className="flex-row items-center" style={{ gap: 6 }}>
+        <View className="flex-row items-center" style={[{ gap: 6 }, row]}>
           {latest && (
             <Text className="text-xs text-on-surface-variant">
               {formatShortDate(latest.date)}
@@ -207,7 +208,7 @@ function TrendCard({
 // ─── TrendsScreen ─────────────────────────────────────────────────────────────
 
 export default function TrendsScreen() {
-  const { formatDate, formatMessage, messages, textAlign } = useLocalization();
+  const { formatDate, formatMessage, messages, row, textAlign } = useLocalization();
   const [loading, setLoading] = useState(true);
   const [trends, setTrends] = useState<DomainTrend[]>([]);
 
@@ -305,13 +306,13 @@ export default function TrendsScreen() {
             {/* Legend */}
             <View
               className="flex-row items-center bg-surface-container-low rounded-2xl px-4 py-3 mb-6"
-              style={{ gap: 16 }}
+              style={[{ gap: 16 }, row]}
             >
-              <View className="flex-row items-center" style={{ gap: 6 }}>
+              <View className="flex-row items-center" style={[{ gap: 6 }, row]}>
                 <View style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#006b60' }} />
                 <Text className="text-xs text-on-surface-variant font-medium">{messages.trends.improving}</Text>
               </View>
-              <View className="flex-row items-center" style={{ gap: 6 }}>
+              <View className="flex-row items-center" style={[{ gap: 6 }, row]}>
                 <View style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#a83836' }} />
                 <Text className="text-xs text-on-surface-variant font-medium">{messages.trends.declining}</Text>
               </View>

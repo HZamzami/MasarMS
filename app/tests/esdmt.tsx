@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -49,7 +50,7 @@ function formatTime(seconds: number): string {
 // ─── Component ─────────────────────────────────────────────────────────────
 export default function EsdmtScreen() {
   const router = useRouter();
-  const { backIcon, formatMessage, formatNumber, messages } = useLocalization();
+  const { backIcon, formatMessage, formatNumber, messages, row } = useLocalization();
 
   const key = useRef<KeyEntry[]>(generateKey()).current;
   const [currentIdx, setCurrentIdx] = useState(() => Math.floor(Math.random() * 9));
@@ -134,21 +135,9 @@ export default function EsdmtScreen() {
   }
 
   const challengeBorderColor =
-    feedback === 'correct'
-      ? '#006880'
-      : feedback === 'wrong'
-        ? '#a83836'
-        : '#cdd5da';
-
+    feedback === 'correct' ? '#006880' : feedback === 'wrong' ? '#a83836' : 'rgba(170,179,184,0.2)';
   const challengeGlowColor =
-    feedback === 'correct'
-      ? '#006880'
-      : feedback === 'wrong'
-        ? '#a83836'
-        : '#000';
-
-  // Split 9 icons into 3 rows of 3 for the reference key
-  const keyRows = [key.slice(0, 3), key.slice(3, 6), key.slice(6, 9)];
+    feedback === 'correct' ? '#006880' : feedback === 'wrong' ? '#a83836' : '#000';
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -158,128 +147,140 @@ export default function EsdmtScreen() {
         <CountdownOverlay onFinished={() => setIsCountingDown(false)} />
       )}
 
-      {/* Top bar */}
-      <View className="flex-row justify-between items-center px-5 pt-2 pb-3">
+      {/* Header */}
+      <View
+        className="flex-row justify-between items-center px-5 py-3"
+        style={[row, { borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.2)' }]}
+      >
         <TouchableOpacity onPress={() => router.back()} hitSlop={20}>
           <Ionicons name={backIcon} size={24} color="#006880" />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-on-surface">{messages.common.appName}</Text>
-        <View className="w-8 h-8" />
-      </View>
-
-      {/* Timer + score row */}
-      <View className="flex-row items-center justify-between px-5 mb-4">
-        <View
-          className="flex-row items-center gap-2 bg-surface-container-lowest rounded-2xl px-5 py-2.5"
-          style={{ borderWidth: 1, borderColor: '#cdd5da' }}
-        >
-          <Ionicons name="time-outline" size={18} color="#006880" />
-          <Text className="text-2xl font-bold text-primary tabular-nums">
-            {formatTime(timeLeft)}
-          </Text>
-        </View>
-
-        <View
-          className="flex-row items-center gap-2 bg-surface-container-lowest rounded-2xl px-5 py-2.5"
-          style={{ borderWidth: 1, borderColor: '#cdd5da' }}
-        >
-          <Ionicons name="checkmark-circle-outline" size={18} color="#006880" />
-          <Text className="text-2xl font-bold text-primary tabular-nums">
-            {formatNumber(correct)}
-            <Text className="text-base font-medium text-on-surface-variant">
-              /{formatNumber(attempts)}
-            </Text>
+        <Text className="text-base font-bold text-on-surface">{messages.common.appName}</Text>
+        {/* Score badge */}
+        <View className="bg-surface-container rounded-full px-3 py-1">
+          <Text className="text-xs font-bold text-on-surface-variant tabular-nums">
+            {formatNumber(correct)}/{formatNumber(attempts)}
           </Text>
         </View>
       </View>
 
-      {/* Reference key – 3×3 grid */}
-      <View
-        className="mx-5 mb-4 bg-surface-container-low rounded-2xl p-4"
-        style={{ borderWidth: 1, borderColor: '#cdd5da' }}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 16 }}
       >
-        <Text className="text-[10px] font-bold text-on-surface-variant text-center mb-3 uppercase tracking-widest">
-          {messages.esdmt.referenceKey}
-        </Text>
-        {keyRows.map((row, rowIdx) => (
+        {/* Timer pill – centered */}
+        <View className="items-center mt-4 mb-6">
           <View
-            key={rowIdx}
-            className="flex-row justify-around"
-            style={rowIdx < 2 ? { marginBottom: 10 } : undefined}
+            className="rounded-full px-7 py-2.5"
+            style={{
+              backgroundColor: '#ffffff',
+              borderWidth: 1,
+              borderColor: 'rgba(170,179,184,0.25)',
+              shadowColor: '#006880',
+              shadowOpacity: 0.07,
+              shadowRadius: 12,
+              elevation: 3,
+            }}
           >
-            {row.map(({ icon, number }) => (
+            <Text className="text-3xl font-bold text-primary tabular-nums" style={{ letterSpacing: -1 }}>
+              {formatTime(timeLeft)}
+            </Text>
+          </View>
+          <Text className="text-[10px] font-semibold text-on-surface-variant mt-2 uppercase tracking-widest">
+            {messages.common.timeRemaining}
+          </Text>
+        </View>
+
+        {/* Reference key – horizontal 9-col strip */}
+        <View className="mx-5 mb-6">
+          <Text className="text-[9px] font-bold text-on-surface-variant text-center mb-2.5 uppercase tracking-widest">
+            {messages.esdmt.referenceKey}
+          </Text>
+          <View
+            className="rounded-xl p-2"
+            style={{
+              backgroundColor: '#eff4f7',
+              borderWidth: 1,
+              borderColor: 'rgba(170,179,184,0.15)',
+              flexDirection: 'row',
+            }}
+          >
+            {key.map(({ icon, number }) => (
               <View
                 key={icon}
-                className="items-center bg-surface-container-lowest rounded-xl"
-                style={{
-                  width: '30%',
-                  paddingVertical: 8,
-                  gap: 4,
-                  borderWidth: 1,
-                  borderColor: '#e4ebee',
-                }}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 4, gap: 2 }}
               >
-                <MaterialCommunityIcons name={icon} size={26} color="#006880" />
-                <Text className="text-sm font-bold text-on-surface">{number}</Text>
+                <MaterialCommunityIcons name={icon} size={18} color="#006880" />
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#2b3438' }}>{number}</Text>
               </View>
             ))}
           </View>
-        ))}
-      </View>
-
-      {/* Challenge symbol */}
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-xs font-semibold text-on-surface-variant mb-4 uppercase tracking-widest">
-          {messages.esdmt.selectPrompt}
-        </Text>
-        <View
-          style={{
-            width: 140,
-            height: 140,
-            borderRadius: 28,
-            backgroundColor: '#f0f4f5',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 2.5,
-            borderColor: challengeBorderColor,
-            shadowColor: challengeGlowColor,
-            shadowOpacity: feedback ? 0.25 : 0.08,
-            shadowRadius: feedback ? 16 : 8,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: feedback ? 10 : 4,
-          }}
-        >
-          <MaterialCommunityIcons
-            name={key[currentIdx].icon}
-            size={72}
-            color="#006880"
-          />
         </View>
-      </View>
 
-      {/* 3×3 keypad */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 20, gap: 10 }}>
-        {[[1, 2, 3], [4, 5, 6], [7, 8, 9]].map((row, rowIdx) => (
-          <View key={rowIdx} style={{ flexDirection: 'row', gap: 10 }}>
-            {row.map((n) => (
+        {/* Challenge symbol card – centered */}
+        <View className="items-center mb-6">
+          <View
+            style={{
+              width: 140,
+              height: 140,
+              borderRadius: 28,
+              backgroundColor: '#ffffff',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 2,
+              borderColor: challengeBorderColor,
+              shadowColor: challengeGlowColor,
+              shadowOpacity: feedback ? 0.22 : 0.06,
+              shadowRadius: feedback ? 20 : 10,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: feedback ? 12 : 4,
+            }}
+          >
+            {/* Outer focus ring */}
+            <View
+              style={{
+                position: 'absolute',
+                inset: -10,
+                borderWidth: 1.5,
+                borderColor: 'rgba(0,104,128,0.08)',
+                borderRadius: 38,
+              }}
+            />
+            <MaterialCommunityIcons
+              name={key[currentIdx].icon}
+              size={72}
+              color="#006880"
+            />
+          </View>
+          <Text className="mt-5 text-xs font-medium text-on-surface-variant text-center">
+            {messages.esdmt.selectPrompt}
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* 3×3 keypad – pinned above safe area */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 20, gap: 12 }}>
+        {[[1, 2, 3], [4, 5, 6], [7, 8, 9]].map((nums, rowIdx) => (
+          <View key={rowIdx} style={{ flexDirection: 'row', gap: 12 }}>
+            {nums.map((n) => (
               <TouchableOpacity
                 key={n}
-                style={{
-                  flex: 1,
-                  height: 72,
-                  backgroundColor: '#dbe4e9',
-                  borderRadius: 18,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: '#c5d0d5',
-                }}
                 onPress={() => handlePress(n)}
                 activeOpacity={0.7}
                 accessibilityLabel={formatMessage(messages.esdmt.numberA11y, { number: formatNumber(n) })}
                 accessibilityRole="button"
+                style={{
+                  flex: 1,
+                  height: 72,
+                  backgroundColor: '#dbe4e9',
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderBottomWidth: 3,
+                  borderBottomColor: 'rgba(0,104,128,0.12)',
+                }}
               >
-                <Text style={{ fontSize: 26, fontWeight: '700', color: '#006880' }}>{n}</Text>
+                <Text style={{ fontSize: 24, fontWeight: '700', color: '#006880' }}>{n}</Text>
               </TouchableOpacity>
             ))}
           </View>

@@ -17,18 +17,20 @@ import type { VisionContrastData } from '../../lib/types';
 
 // ─── Staircase config ─────────────────────────────────────────────────────────
 
-/**
- * Letters chosen for similar visual complexity (Sloan-adjacent set).
- * The 3×3 grid matches the Stitch design exactly.
- */
-const LETTER_ROWS = [
-  ['E', 'F', 'P'],
-  ['T', 'O', 'Z'],
-  ['L', 'D', 'H'],
-] as const;
-
 type Letter = 'E' | 'F' | 'P' | 'T' | 'O' | 'Z' | 'L' | 'D' | 'H';
 const ALL_LETTERS: Letter[] = ['E', 'F', 'P', 'T', 'O', 'Z', 'L', 'D', 'H'];
+
+/**
+ * Fisher-Yates shuffle to randomise letter positions.
+ */
+function shuffleLetters(letters: Letter[]): Letter[] {
+  const result = [...letters];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 /**
  * Asymmetric staircase: step down faster (approaching threshold),
@@ -76,14 +78,14 @@ function LetterButton({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+      hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
       accessibilityRole="button"
       accessibilityLabel={formatMessage(messages.vision.letterA11y, { letter })}
       activeOpacity={0.65}
       className="flex-1 rounded-2xl bg-surface-container items-center justify-center"
       style={{ aspectRatio: 1, opacity: disabled ? 0.5 : 1 }}
     >
-      <Text className="font-extrabold text-on-surface" style={{ fontSize: 32 }}>
+      <Text className="font-extrabold text-on-surface" style={{ fontSize: 28 }}>
         {letter}
       </Text>
     </TouchableOpacity>
@@ -103,7 +105,7 @@ function ResultCard({
   attempts: number;
   onDone: () => void;
 }) {
-  const { formatMessage, formatNumber, messages, textAlign } = useLocalization();
+  const { formatMessage, formatNumber, messages, row, textAlign } = useLocalization();
   const sensitivityScore = Math.round((1 - threshold) * 100);
 
   const tier =
@@ -158,7 +160,7 @@ function ResultCard({
         </View>
 
         {/* Stats row */}
-        <View className="flex-row" style={{ gap: 10 }}>
+        <View className="flex-row" style={[{ gap: 10 }, row]}>
           <View className="flex-1 bg-surface-container-high rounded-2xl p-4 items-center">
             <Text className="text-2xl font-extrabold text-primary">{formatNumber(correct)}</Text>
             <Text className="text-xs text-on-surface-variant mt-1">{messages.vision.correct}</Text>
@@ -198,9 +200,10 @@ function ResultCard({
 
 export default function VisionTestScreen() {
   const router = useRouter();
-  const { backIcon, formatMessage, formatNumber, messages } = useLocalization();
+  const { backIcon, formatMessage, formatNumber, messages, row } = useLocalization();
 
   const [target, setTarget] = useState<Letter>('E');
+  const [gridLetters, setGridLetters] = useState<Letter[]>(() => shuffleLetters(ALL_LETTERS));
   const [opacityDisplay, setOpacityDisplay] = useState(MAX_OPACITY);
   const [consecutiveFails, setConsecutiveFails] = useState(0);
   const [attemptCount, setAttemptCount] = useState(0);
@@ -304,6 +307,7 @@ export default function VisionTestScreen() {
             setFeedback(null);
             setOpacityDisplay(next);
             animateTo(next);
+            setGridLetters(shuffleLetters(ALL_LETTERS));
             setTarget(pickRandom(target));
           }, 350);
         }
@@ -330,6 +334,7 @@ export default function VisionTestScreen() {
             setFeedback(null);
             setOpacityDisplay(next);
             animateTo(next);
+            setGridLetters(shuffleLetters(ALL_LETTERS));
             setTarget(pickRandom(target));
           }, 350);
         }
@@ -344,15 +349,21 @@ export default function VisionTestScreen() {
     ? formatMessage(messages.vision.attemptSingular, { count: formatNumber(attemptCount) })
     : formatMessage(messages.vision.attemptPlural, { count: formatNumber(attemptCount) });
 
+  const gridRows = [
+    gridLetters.slice(0, 3),
+    gridLetters.slice(3, 6),
+    gridLetters.slice(6, 9),
+  ];
+
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <LanguageToggleBar />
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-6 py-4"
-        style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.25)' }}
+        style={[{ borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.25)' }, row]}
       >
-        <View className="flex-row items-center" style={{ gap: 12 }}>
+        <View className="flex-row items-center" style={[{ gap: 12 }, row]}>
           <TouchableOpacity
             onPress={() => router.back()}
             hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
@@ -430,17 +441,17 @@ export default function VisionTestScreen() {
                   : 'transparent',
             }}
           >
-            <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-10">
+            <Text className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-widest mb-10">
               {messages.vision.prompt}
             </Text>
 
             <Animated.Text
               style={{
                 opacity: animOpacity,
-                fontSize: 160,
+                fontSize: 140,
                 fontWeight: '900',
                 color: '#2b3438',
-                lineHeight: 192,
+                lineHeight: 168,
               }}
               accessibilityRole="text"
               accessibilityLabel={messages.vision.prompt}
@@ -451,9 +462,9 @@ export default function VisionTestScreen() {
 
           {/* Bottom sheet */}
           <View
-            className="bg-surface-container-lowest px-6 pb-10"
+            className="bg-surface-container-lowest px-7 pb-10"
             style={{
-              paddingTop: 24,
+              paddingTop: 28,
               borderTopLeftRadius: 36,
               borderTopRightRadius: 36,
               shadowColor: '#006880',
@@ -469,10 +480,10 @@ export default function VisionTestScreen() {
             </View>
 
             {/* 3×3 letter grid */}
-            <View style={{ gap: 10 }}>
-              {LETTER_ROWS.map((row, rowIdx) => (
-                <View key={rowIdx} className="flex-row" style={{ gap: 10 }}>
-                  {(row as readonly Letter[]).map((letter) => (
+            <View style={{ gap: 12 }}>
+              {gridRows.map((rowArr, rowIdx) => (
+                <View key={rowIdx} className="flex-row" style={{ gap: 12 }}>
+                  {rowArr.map((letter) => (
                     <LetterButton
                       key={letter}
                       letter={letter}
@@ -485,9 +496,9 @@ export default function VisionTestScreen() {
             </View>
 
             {/* Status pill */}
-            <View className="mt-5 flex-row justify-center items-center" style={{ gap: 8 }}>
-              <View className="w-2 h-2 rounded-full bg-tertiary" />
-              <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
+            <View className="mt-6 flex-row justify-center items-center" style={[{ gap: 8 }, row]}>
+              <View className="w-1.5 h-1.5 rounded-full bg-tertiary" />
+              <Text className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">
                 {formatMessage(messages.vision.contrastStatus, {
                   contrast: formatNumber(Math.round(opacityDisplay * 100)),
                   suffix: consecutiveFails > 0

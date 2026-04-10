@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Slot, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import type { Session } from '@supabase/supabase-js';
-import { LocalizationProvider, loadStoredLanguage, useLocalization } from '../lib/i18n';
+import { LocalizationProvider, loadStoredLanguage } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
@@ -100,10 +100,8 @@ export default function RootLayout() {
 }
 
 function LocalizedSlot() {
-  const { screenDirection } = useLocalization();
-
   return (
-    <View style={[{ flex: 1 }, screenDirection]}>
+    <View style={{ flex: 1 }}>
       <Slot />
     </View>
   );
