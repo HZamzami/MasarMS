@@ -119,7 +119,7 @@ function ResultCard({
         <Ionicons name="clipboard-outline" size={52} color={totalColor} />
       </View>
 
-      <Text className="text-3xl font-extrabold text-on-surface text-center mb-1" style={textAlign}>
+      <Text className="text-2xl font-extrabold text-on-surface text-center mb-1" style={textAlign}>
         {messages.msis29.completeTitle}
       </Text>
       <Text className="text-on-surface-variant text-center mb-10" style={textAlign}>
@@ -131,7 +131,7 @@ function ResultCard({
           <Text className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-2">
             {messages.msis29.overallScore}
           </Text>
-          <Text className="font-extrabold" style={{ fontSize: 72, lineHeight: 80, color: totalColor }}>
+          <Text className="font-extrabold" style={{ fontSize: 52, lineHeight: 60, color: totalColor }}>
             {formatNumber(scores.total)}
           </Text>
           <Text className="text-sm text-on-surface-variant mb-2">{messages.msis29.outOfHundred}</Text>

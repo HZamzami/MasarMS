@@ -375,63 +375,76 @@ export default function MobilityTestScreen() {
   );
 
   const renderActive = () => (
-    <View className="flex-1 items-center justify-between py-10 px-6">
+    <View className="flex-1 items-center px-6 pt-6 pb-8" style={{ gap: 20 }}>
+      {/* Timer */}
       <View className="items-center">
-        <Text className="text-sm uppercase tracking-[5px] text-on-surface-variant mb-2">
+        <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant mb-1">
           {messages.common.timeRemaining}
         </Text>
-        <Text className="text-[88px] leading-[92px] font-extrabold text-primary tracking-tight">
+        <Text className="text-6xl font-extrabold text-primary tracking-tight">
           {activeTimerLabel}
         </Text>
       </View>
 
-      <View className="items-center justify-center">
-        <View className="w-[220px] h-[220px] items-center justify-center">
-          <Animated.View
-            style={{
-              position: 'absolute',
-              width: 220,
-              height: 220,
-              borderRadius: 110,
-              backgroundColor: '#006b60',
-              opacity: pulseOpacity,
-              transform: [{ scale: pulseScale }],
-            }}
-          />
-          <View
-            className="w-[190px] h-[190px] rounded-full items-center justify-center"
-            style={{
-              backgroundColor: '#006b60',
-              shadowColor: '#006b60',
-              shadowOpacity: 0.22,
-              shadowRadius: 16,
-              elevation: 8,
-            }}
-          >
-            <MaterialCommunityIcons name="walk" size={110} color="#e2fff8" />
-          </View>
-        </View>
-        <View className="mt-7 bg-[#65fde6]/35 px-8 py-2 rounded-full">
-          <Text className="text-tertiary text-[36px] font-bold tracking-wide uppercase">{messages.mobility.walking}</Text>
+      {/* Pulse circle */}
+      <View className="items-center justify-center" style={{ width: 180, height: 180 }}>
+        <Animated.View
+          style={{
+            position: 'absolute',
+            width: 180,
+            height: 180,
+            borderRadius: 90,
+            backgroundColor: '#006b60',
+            opacity: pulseOpacity,
+            transform: [{ scale: pulseScale }],
+          }}
+        />
+        <View
+          style={{
+            width: 156,
+            height: 156,
+            borderRadius: 78,
+            backgroundColor: '#006b60',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#006b60',
+            shadowOpacity: 0.22,
+            shadowRadius: 16,
+            elevation: 8,
+          }}
+        >
+          <MaterialCommunityIcons name="walk" size={88} color="#e2fff8" />
         </View>
       </View>
 
-      <View className="items-center max-w-[340px]">
-        <Text className="text-center text-[44px] leading-[50px] font-bold text-on-surface">
+      {/* Walking label */}
+      <View className="bg-[#65fde6]/35 px-6 py-1.5 rounded-full">
+        <Text className="text-tertiary text-base font-bold tracking-widest uppercase">
+          {messages.mobility.walking}
+        </Text>
+      </View>
+
+      {/* Instructions */}
+      <View
+        className="w-full bg-surface-container-low rounded-2xl px-5 py-4"
+        style={{ borderWidth: 1, borderColor: '#dce4e6' }}
+      >
+        <Text className="text-center text-base font-bold text-on-surface mb-1">
           {messages.mobility.holdPhoneTitle}
         </Text>
-        <Text className="text-center text-[34px] leading-[42px] text-on-surface-variant mt-4">
+        <Text className="text-center text-sm text-on-surface-variant leading-5">
           {messages.mobility.holdPhoneBody}
         </Text>
         {sensorUnavailable ? (
-          <Text className="text-center text-sm text-error mt-4">
+          <Text className="text-center text-xs text-error mt-2">
             {messages.mobility.sensorUnavailable}
           </Text>
         ) : null}
       </View>
 
+      {/* Stop button */}
       <TouchableOpacity
-        className="w-full rounded-full py-7 items-center justify-center mt-10"
+        className="w-full rounded-full py-4 items-center justify-center"
         style={{
           backgroundColor: '#a83836',
           shadowColor: '#6e0a12',
@@ -448,9 +461,9 @@ export default function MobilityTestScreen() {
         accessibilityRole="button"
         accessibilityLabel={messages.mobility.stopA11y}
       >
-        <View className="flex-row items-center" style={{ gap: 12 }}>
-          <Ionicons name="stop-circle" size={34} color="#fff7f6" />
-          <Text className="text-on-error text-[44px] leading-[48px] font-extrabold tracking-[4px] uppercase">
+        <View className="flex-row items-center" style={{ gap: 10 }}>
+          <Ionicons name="stop-circle" size={26} color="#fff7f6" />
+          <Text className="text-on-error text-xl font-extrabold tracking-widest uppercase">
             {messages.mobility.stop}
           </Text>
         </View>
@@ -476,61 +489,73 @@ export default function MobilityTestScreen() {
     const durationSeconds = summary?.durationSeconds ?? 0;
 
     return (
-      <View className="flex-1 px-6 pt-8 pb-6">
-        <Text className="text-[52px] leading-[56px] font-extrabold text-on-surface-variant mb-4">
+      <View className="flex-1 px-6 pt-6 pb-6" style={{ gap: 14 }}>
+        {/* Title */}
+        <Text className="text-2xl font-extrabold text-on-surface">
           {messages.mobility.summaryTitle}
         </Text>
 
-        <View className="bg-[#72d9fd]/30 rounded-xl p-5 flex-row items-center mb-6" style={{ gap: 12 }}>
-          <View className="w-14 h-14 rounded-full items-center justify-center bg-tertiary">
-            <Ionicons name="checkmark-circle" size={28} color="#e2fff8" />
+        {/* Success banner */}
+        <View
+          className="bg-[#72d9fd]/30 rounded-2xl p-4 flex-row items-center"
+          style={{ gap: 12 }}
+        >
+          <View className="w-10 h-10 rounded-full items-center justify-center bg-tertiary">
+            <Ionicons name="checkmark-circle" size={22} color="#e2fff8" />
           </View>
           <View className="flex-1">
-            <Text className="text-primary font-bold text-lg">{messages.mobility.successTitle}</Text>
-            <Text className="text-on-surface-variant text-sm">
+            <Text className="text-primary font-bold text-sm">{messages.mobility.successTitle}</Text>
+            <Text className="text-on-surface-variant text-xs mt-0.5">
               {messages.mobility.successBody}
             </Text>
           </View>
         </View>
 
-        <View className="bg-surface-container-low rounded-[24px] p-6 mb-4">
-          <Text className="text-xs uppercase tracking-[2px] text-on-surface-variant">
-            {messages.mobility.uTurnCount}
-          </Text>
-          <Text className="text-[56px] leading-[62px] font-extrabold text-primary mt-2">
-            {uTurnCount}
-          </Text>
-        </View>
-
-        <View className="bg-surface-container-low rounded-[24px] p-6 mb-4 items-center">
-          <Text className="text-xs uppercase tracking-[2px] text-on-surface-variant mb-4">
-            {messages.mobility.averageAcceleration}
-          </Text>
-          <View className="w-36 h-36 rounded-full border-[10px] border-tertiary items-center justify-center">
-            <Text className="text-2xl font-extrabold text-on-surface">
-              {averageAcceleration.toFixed(2)}
+        {/* Stats row */}
+        <View className="flex-row" style={{ gap: 12 }}>
+          <View className="flex-1 bg-surface-container-low rounded-2xl p-4 items-center" style={{ gap: 4 }}>
+            <Text className="text-xs uppercase tracking-wider text-on-surface-variant text-center">
+              {messages.mobility.uTurnCount}
             </Text>
-            <Text className="text-xs font-medium text-tertiary mt-1">{messages.mobility.accelerationUnit}</Text>
+            <Text className="text-4xl font-extrabold text-primary">{uTurnCount}</Text>
+          </View>
+
+          <View className="flex-1 bg-surface-container-low rounded-2xl p-4 items-center" style={{ gap: 4 }}>
+            <Text className="text-xs uppercase tracking-wider text-on-surface-variant text-center">
+              {messages.mobility.averageAcceleration}
+            </Text>
+            <Text className="text-4xl font-extrabold text-on-surface">
+              {averageAcceleration.toFixed(1)}
+            </Text>
+            <Text className="text-xs font-medium text-tertiary">{messages.mobility.accelerationUnit}</Text>
           </View>
         </View>
 
-        <View className="bg-surface-container-lowest rounded-[24px] p-6 mb-8 border border-outline-variant/20">
-          <Text className="text-lg font-bold text-on-surface mb-2">{messages.mobility.performanceInsights}</Text>
+        {/* Session info */}
+        <View
+          className="bg-surface-container-lowest rounded-2xl p-4"
+          style={{ borderWidth: 1, borderColor: '#dce4e6' }}
+        >
+          <Text className="text-sm font-bold text-on-surface mb-1">
+            {messages.mobility.performanceInsights}
+          </Text>
           <Text className="text-sm text-on-surface-variant">
             {formatMessage(messages.mobility.sessionLength, {
               seconds: durationSeconds.toFixed(1),
             })}
           </Text>
           {saveError ? (
-            <Text className="text-xs text-error mt-3">
+            <Text className="text-xs text-error mt-2">
               {formatMessage(messages.mobility.savedLocallyOnly, { error: saveError })}
             </Text>
           ) : (
-            <Text className="text-xs text-tertiary mt-3">
+            <Text className="text-xs text-tertiary mt-2">
               {messages.mobility.observationSaved}
             </Text>
           )}
         </View>
+
+        <View style={{ flex: 1 }} />
 
         <TouchableOpacity
           className="w-full rounded-full py-4 items-center"

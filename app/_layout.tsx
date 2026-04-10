@@ -28,7 +28,7 @@ async function resolveRoute(session: Session): Promise<'/' | '/onboarding/profil
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
-  const [initialLanguage, setInitialLanguage] = useState<'en' | 'ar'>('en');
+  const [initialLanguage, setInitialLanguage] = useState<'en' | 'ar'>('ar');
   const routeRef = useRef<'/' | '/onboarding/profile' | '/(auth)/welcome'>('/(auth)/welcome');
   const router = useRouter();
 

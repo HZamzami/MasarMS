@@ -29,7 +29,7 @@ export default function WelcomeScreen() {
             <MaterialCommunityIcons name="brain" size={52} color="#006880" />
           </View>
 
-          <Text className="text-4xl font-extrabold text-on-surface tracking-tight text-center mb-2">
+          <Text className="text-3xl font-extrabold text-on-surface tracking-tight text-center mb-2">
             {messages.common.appName}
           </Text>
           <Text className="text-base text-on-surface-variant text-center leading-relaxed px-4" style={textAlign}>

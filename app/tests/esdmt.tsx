@@ -33,7 +33,6 @@ type KeyEntry = { icon: IconName; number: number };
 
 function generateKey(): KeyEntry[] {
   const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  // Fisher-Yates shuffle
   for (let i = nums.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [nums[i], nums[j]] = [nums[j], nums[i]];
@@ -62,12 +61,10 @@ export default function EsdmtScreen() {
   const [done, setDone] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Refs mirror state so saveObservation reads final values without stale closure risk
   const attemptsRef = useRef(0);
   const correctRef = useRef(0);
   const timeLeftRef = useRef(90);
 
-  // ── Countdown timer ──────────────────────────────────────────────────────
   useEffect(() => {
     if (done || isCountingDown) return;
     const id = setInterval(() => {
@@ -84,7 +81,6 @@ export default function EsdmtScreen() {
     return () => clearInterval(id);
   }, [done, isCountingDown]);
 
-  // ── Finish: save + navigate ───────────────────────────────────────────────
   useEffect(() => {
     if (!done) return;
     void saveObservation();
@@ -97,14 +93,12 @@ export default function EsdmtScreen() {
   async function saveObservation() {
     const totalAttempts = attemptsRef.current;
     const correctMatches = correctRef.current;
-    // 90 - timeLeftRef gives actual time used (0 when full test completed)
     const durationSeconds = 90 - timeLeftRef.current;
 
     await saveTestResult({
       domain: 'cognitive',
       testType: 'eSDMT',
       data: {
-        // IPS score = raw correct responses in 90s (primary clinical biomarker)
         ips_score: correctMatches,
         total_attempts: totalAttempts,
         correct_matches: correctMatches,
@@ -119,7 +113,6 @@ export default function EsdmtScreen() {
     });
   }
 
-  // ── Button press ─────────────────────────────────────────────────────────
   function handlePress(tappedNumber: number) {
     if (done || isCountingDown) return;
     const isCorrect = tappedNumber === key[currentIdx].number;
@@ -140,67 +133,120 @@ export default function EsdmtScreen() {
     }
   }
 
-  // ── Border color for challenge card ──────────────────────────────────────
   const challengeBorderColor =
     feedback === 'correct'
       ? '#006880'
       : feedback === 'wrong'
         ? '#a83836'
-        : '#aab3b8';
+        : '#cdd5da';
+
+  const challengeGlowColor =
+    feedback === 'correct'
+      ? '#006880'
+      : feedback === 'wrong'
+        ? '#a83836'
+        : '#000';
+
+  // Split 9 icons into 3 rows of 3 for the reference key
+  const keyRows = [key.slice(0, 3), key.slice(3, 6), key.slice(6, 9)];
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <LanguageToggleBar />
+
       {isCountingDown && (
         <CountdownOverlay onFinished={() => setIsCountingDown(false)} />
       )}
+
       {/* Top bar */}
-      <View className="flex-row justify-between items-center px-6 py-4">
+      <View className="flex-row justify-between items-center px-5 pt-2 pb-3">
         <TouchableOpacity onPress={() => router.back()} hitSlop={20}>
           <Ionicons name={backIcon} size={24} color="#006880" />
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-on-surface">{messages.common.appName}</Text>
+        <Text className="text-lg font-bold text-on-surface">{messages.common.appName}</Text>
         <View className="w-8 h-8" />
       </View>
 
-      {/* Timer */}
-      <View className="items-center mb-8">
-        <View className="bg-surface-container-lowest border border-outline-variant rounded-full px-8 py-3 shadow-sm">
-          <Text className="text-4xl font-bold text-primary">
+      {/* Timer + score row */}
+      <View className="flex-row items-center justify-between px-5 mb-4">
+        <View
+          className="flex-row items-center gap-2 bg-surface-container-lowest rounded-2xl px-5 py-2.5"
+          style={{ borderWidth: 1, borderColor: '#cdd5da' }}
+        >
+          <Ionicons name="time-outline" size={18} color="#006880" />
+          <Text className="text-2xl font-bold text-primary tabular-nums">
             {formatTime(timeLeft)}
           </Text>
         </View>
-        <Text className="text-xs font-semibold text-on-surface-variant mt-2 tracking-widest uppercase">
-          {messages.common.timeRemaining}
-        </Text>
-      </View>
 
-      {/* Reference key – 9 columns */}
-      <View className="mx-4 mb-8 bg-surface-container-low rounded-xl p-2 border border-outline-variant">
-        <Text className="text-xs font-bold text-on-surface-variant text-center mb-2 uppercase tracking-wider">
-          {messages.esdmt.referenceKey}
-        </Text>
-        <View className="flex-row justify-around">
-          {key.map(({ icon, number }) => (
-            <View key={icon} className="items-center" style={{ gap: 2 }}>
-              <MaterialCommunityIcons name={icon} size={22} color="#006880" />
-              <Text className="text-xs font-bold text-on-surface">{number}</Text>
-            </View>
-          ))}
+        <View
+          className="flex-row items-center gap-2 bg-surface-container-lowest rounded-2xl px-5 py-2.5"
+          style={{ borderWidth: 1, borderColor: '#cdd5da' }}
+        >
+          <Ionicons name="checkmark-circle-outline" size={18} color="#006880" />
+          <Text className="text-2xl font-bold text-primary tabular-nums">
+            {formatNumber(correct)}
+            <Text className="text-base font-medium text-on-surface-variant">
+              /{formatNumber(attempts)}
+            </Text>
+          </Text>
         </View>
       </View>
 
+      {/* Reference key – 3×3 grid */}
+      <View
+        className="mx-5 mb-4 bg-surface-container-low rounded-2xl p-4"
+        style={{ borderWidth: 1, borderColor: '#cdd5da' }}
+      >
+        <Text className="text-[10px] font-bold text-on-surface-variant text-center mb-3 uppercase tracking-widest">
+          {messages.esdmt.referenceKey}
+        </Text>
+        {keyRows.map((row, rowIdx) => (
+          <View
+            key={rowIdx}
+            className="flex-row justify-around"
+            style={rowIdx < 2 ? { marginBottom: 10 } : undefined}
+          >
+            {row.map(({ icon, number }) => (
+              <View
+                key={icon}
+                className="items-center bg-surface-container-lowest rounded-xl"
+                style={{
+                  width: '30%',
+                  paddingVertical: 8,
+                  gap: 4,
+                  borderWidth: 1,
+                  borderColor: '#e4ebee',
+                }}
+              >
+                <MaterialCommunityIcons name={icon} size={26} color="#006880" />
+                <Text className="text-sm font-bold text-on-surface">{number}</Text>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+
       {/* Challenge symbol */}
-      <View className="flex-1 items-center justify-center mb-8">
+      <View className="flex-1 items-center justify-center">
+        <Text className="text-xs font-semibold text-on-surface-variant mb-4 uppercase tracking-widest">
+          {messages.esdmt.selectPrompt}
+        </Text>
         <View
-          className="w-40 h-40 bg-surface-container-lowest rounded-3xl items-center justify-center"
           style={{
+            width: 140,
+            height: 140,
+            borderRadius: 28,
+            backgroundColor: '#f0f4f5',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2.5,
             borderColor: challengeBorderColor,
-            borderWidth: 2,
-            shadowColor: '#000',
-            shadowOpacity: 0.12,
-            shadowRadius: 12,
-            elevation: 6,
+            shadowColor: challengeGlowColor,
+            shadowOpacity: feedback ? 0.25 : 0.08,
+            shadowRadius: feedback ? 16 : 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: feedback ? 10 : 4,
           }}
         >
           <MaterialCommunityIcons
@@ -209,45 +255,34 @@ export default function EsdmtScreen() {
             color="#006880"
           />
         </View>
-        <Text className="mt-6 text-on-surface-variant text-sm">
-          {messages.esdmt.selectPrompt}
-        </Text>
-        <Text className="mt-2 text-xs text-on-surface-variant">
-          {formatMessage(messages.esdmt.correctProgress, {
-            correct: formatNumber(correct),
-            attempts: formatNumber(attempts),
-          })}
-        </Text>
       </View>
 
       {/* 3×3 keypad */}
-      <View
-        style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          paddingHorizontal: 16,
-          paddingBottom: 24,
-        }}
-      >
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-          <TouchableOpacity
-            key={n}
-            style={{
-              width: '30%',
-              margin: '1.5%',
-              height: 80,
-              backgroundColor: '#dbe4e9',
-              borderRadius: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onPress={() => handlePress(n)}
-            hitSlop={16}
-            accessibilityLabel={formatMessage(messages.esdmt.numberA11y, { number: formatNumber(n) })}
-            accessibilityRole="button"
-          >
-            <Text className="text-2xl font-bold text-primary">{n}</Text>
-          </TouchableOpacity>
+      <View style={{ paddingHorizontal: 20, paddingBottom: 20, gap: 10 }}>
+        {[[1, 2, 3], [4, 5, 6], [7, 8, 9]].map((row, rowIdx) => (
+          <View key={rowIdx} style={{ flexDirection: 'row', gap: 10 }}>
+            {row.map((n) => (
+              <TouchableOpacity
+                key={n}
+                style={{
+                  flex: 1,
+                  height: 72,
+                  backgroundColor: '#dbe4e9',
+                  borderRadius: 18,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: '#c5d0d5',
+                }}
+                onPress={() => handlePress(n)}
+                activeOpacity={0.7}
+                accessibilityLabel={formatMessage(messages.esdmt.numberA11y, { number: formatNumber(n) })}
+                accessibilityRole="button"
+              >
+                <Text style={{ fontSize: 26, fontWeight: '700', color: '#006880' }}>{n}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         ))}
       </View>
     </SafeAreaView>

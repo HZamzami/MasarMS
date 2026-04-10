@@ -40,6 +40,10 @@ const MIN_OPACITY = 0.10;
 const MAX_OPACITY = 1.00;
 /** End test after this many consecutive failures at a level. */
 const FAIL_THRESHOLD = 3;
+/** End test after this many consecutive correct answers at the minimum opacity (threshold found at floor). */
+const FLOOR_CORRECT_THRESHOLD = 3;
+/** Hard cap on total trials so the test always ends. */
+const MAX_TRIALS = 40;
 
 type ScreenState = 'running' | 'saving' | 'error' | 'done';
 type Feedback = 'correct' | 'wrong' | null;
@@ -124,7 +128,7 @@ function ResultCard({
         <Ionicons name="eye-outline" size={52} color={tier.color} />
       </View>
 
-      <Text className="text-3xl font-extrabold text-on-surface text-center mb-1">
+      <Text className="text-2xl font-extrabold text-on-surface text-center mb-1">
         {messages.vision.completeTitle}
       </Text>
       <Text className="text-on-surface-variant text-center mb-10">
@@ -139,7 +143,7 @@ function ResultCard({
           </Text>
           <Text
             className="font-extrabold"
-            style={{ fontSize: 72, lineHeight: 80, color: tier.color }}
+            style={{ fontSize: 52, lineHeight: 60, color: tier.color }}
           >
             {sensitivityScore}%
           </Text>
@@ -205,13 +209,14 @@ export default function VisionTestScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Refs mirror mutable staircase values — avoids stale closures in timeouts/async
-  const opacityRef        = useRef(MAX_OPACITY);
-  const failsRef          = useRef(0);
-  const totalCorrectRef   = useRef(0);
-  const totalAttemptsRef  = useRef(0);
-  const trialLogRef       = useRef<{ opacity: number; correct: boolean }[]>([]);
-  const feedbackTimerRef  = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const animOpacity       = useRef(new Animated.Value(MAX_OPACITY)).current;
+  const opacityRef          = useRef(MAX_OPACITY);
+  const failsRef            = useRef(0);
+  const floorCorrectRef     = useRef(0);
+  const totalCorrectRef     = useRef(0);
+  const totalAttemptsRef    = useRef(0);
+  const trialLogRef         = useRef<{ opacity: number; correct: boolean }[]>([]);
+  const feedbackTimerRef    = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const animOpacity         = useRef(new Animated.Value(MAX_OPACITY)).current;
 
   useEffect(() => () => { clearTimeout(feedbackTimerRef.current); }, []);
 
@@ -279,19 +284,39 @@ export default function VisionTestScreen() {
         const next = r2(Math.max(MIN_OPACITY, currentOpacity - STEP_DOWN));
         opacityRef.current = next;
 
-        feedbackTimerRef.current = setTimeout(() => {
-          setFeedback(null);
-          setOpacityDisplay(next);
-          animateTo(next);
-          setTarget(pickRandom(target));
-        }, 350);
+        // Track consecutive correct at the floor
+        if (next <= MIN_OPACITY) {
+          floorCorrectRef.current++;
+        } else {
+          floorCorrectRef.current = 0;
+        }
+
+        const atFloor = floorCorrectRef.current >= FLOOR_CORRECT_THRESHOLD;
+        const maxTrialsHit = totalAttemptsRef.current >= MAX_TRIALS;
+
+        if (atFloor || maxTrialsHit) {
+          feedbackTimerRef.current = setTimeout(() => {
+            setFeedback(null);
+            void finishTest();
+          }, 600);
+        } else {
+          feedbackTimerRef.current = setTimeout(() => {
+            setFeedback(null);
+            setOpacityDisplay(next);
+            animateTo(next);
+            setTarget(pickRandom(target));
+          }, 350);
+        }
       } else {
         failsRef.current++;
+        floorCorrectRef.current = 0;
         const newFails = failsRef.current;
         setConsecutiveFails(newFails);
 
-        if (newFails >= FAIL_THRESHOLD) {
-          // 3 consecutive failures — test ends
+        const maxTrialsHit = totalAttemptsRef.current >= MAX_TRIALS;
+
+        if (newFails >= FAIL_THRESHOLD || maxTrialsHit) {
+          // 3 consecutive failures or max trials — test ends
           feedbackTimerRef.current = setTimeout(() => {
             setFeedback(null);
             void finishTest();

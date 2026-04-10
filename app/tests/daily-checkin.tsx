@@ -117,7 +117,7 @@ function SuccessCard({
         <Ionicons name="checkmark-circle" size={56} color="#006b60" />
       </View>
 
-      <Text className="text-3xl font-extrabold text-on-surface text-center mb-3" style={textAlign}>
+      <Text className="text-2xl font-extrabold text-on-surface text-center mb-3" style={textAlign}>
         {messages.dailyCheckin.savedTitle}
       </Text>
 
@@ -243,14 +243,14 @@ export default function DailyCheckin() {
               showsVerticalScrollIndicator={false}
             >
               <View className="mb-10">
-                <Text className="text-3xl font-extrabold text-primary leading-tight" style={textAlign}>
+                <Text className="text-2xl font-extrabold text-primary leading-tight" style={textAlign}>
                   {messages.dailyCheckin.prompt}
                 </Text>
               </View>
 
               <View className="mb-10">
                 <View className="items-center justify-between mb-4" style={row}>
-                  <Text className="font-bold text-xl text-on-surface" style={textAlign}>
+                  <Text className="font-bold text-base text-on-surface" style={textAlign}>
                     {messages.dailyCheckin.moodTitle}
                   </Text>
                   <Text className="text-sm text-on-surface-variant" style={textAlign}>
@@ -284,7 +284,7 @@ export default function DailyCheckin() {
                     <Ionicons name="flash" size={22} color="#004a5d" />
                   </View>
                   <View className="flex-1" style={{ marginStart: 12 }}>
-                    <Text className="font-bold text-xl text-on-surface" style={textAlign}>
+                    <Text className="font-bold text-base text-on-surface" style={textAlign}>
                       {messages.dailyCheckin.energyTitle}
                     </Text>
                     <Text className="text-sm text-on-surface-variant" style={textAlign}>
@@ -323,7 +323,7 @@ export default function DailyCheckin() {
               <View className="mb-6">
                 <View className="items-center mb-3" style={row}>
                   <Ionicons name="create-outline" size={22} color="#006880" style={{ marginEnd: 8 }} />
-                  <Text className="font-bold text-xl text-on-surface flex-1" style={textAlign}>
+                  <Text className="font-bold text-base text-on-surface flex-1" style={textAlign}>
                     {messages.dailyCheckin.symptomsTitle}
                   </Text>
                 </View>

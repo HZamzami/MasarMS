@@ -223,7 +223,7 @@ export default function MotorTappingTaskScreen() {
                 {messages.common.timeRemaining}
               </Text>
             </View>
-            <Text className="mt-2 font-extrabold text-primary" style={{ fontSize: 64, lineHeight: 72 }}>
+            <Text className="mt-2 font-extrabold text-primary" style={{ fontSize: 48, lineHeight: 56 }}>
               {timerLabel}
             </Text>
 

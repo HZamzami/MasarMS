@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { DevSettings, I18nManager, Platform } from 'react-native';
+import { I18nManager, Platform } from 'react-native';
 import type { ComponentProps } from 'react';
 import type { Ionicons } from '@expo/vector-icons';
 import { translations, type AppLanguage, type AppMessages } from './messages';
@@ -60,7 +60,7 @@ function applyNativeDirection(language: AppLanguage) {
 
 export async function loadStoredLanguage(): Promise<AppLanguage> {
   const stored = await AsyncStorage.getItem(STORAGE_KEY);
-  const language: AppLanguage = stored === 'ar' ? 'ar' : 'en';
+  const language: AppLanguage = stored === 'en' ? 'en' : 'ar';
   applyNativeDirection(language);
   return language;
 }
@@ -94,12 +94,7 @@ export function LocalizationProvider({
     if (next === language) return;
 
     await AsyncStorage.setItem(STORAGE_KEY, next);
-    const shouldReload = applyNativeDirection(next);
     setLanguageState(next);
-
-    if (shouldReload && Platform.OS !== 'web') {
-      DevSettings.reload();
-    }
   }, [language]);
 
   const toggleLanguage = useCallback(async () => {

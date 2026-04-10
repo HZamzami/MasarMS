@@ -14,22 +14,27 @@ export function CountdownOverlay({ onFinished }: CountdownOverlayProps) {
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Initial fade in
+    if (count === 0) {
+      onFinished();
+    }
+  }, [count, onFinished]);
+
+  useEffect(() => {
     Animated.timing(opacityAnim, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
     }).start();
 
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     const interval = setInterval(() => {
       setCount((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          onFinished();
           return 0;
         }
-        
-        // Pulse animation
+
         scaleAnim.setValue(1.5);
         Animated.spring(scaleAnim, {
           toValue: 1,
@@ -37,18 +42,14 @@ export function CountdownOverlay({ onFinished }: CountdownOverlayProps) {
           useNativeDriver: true,
         }).start();
 
-        // Haptic on each tick (2, 1)
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
         return prev - 1;
       });
     }, 1000);
 
-    // First haptic (3)
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (count === 0) return null;
 

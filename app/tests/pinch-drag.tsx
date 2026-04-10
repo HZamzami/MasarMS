@@ -95,7 +95,7 @@ function ResultCard({
         <Ionicons name="hand-left-outline" size={52} color={tier.color} />
       </View>
 
-      <Text className="text-3xl font-extrabold text-on-surface text-center mb-1">
+      <Text className="text-2xl font-extrabold text-on-surface text-center mb-1">
         {messages.pinchDrag.resultTitle}
       </Text>
       <Text className="text-on-surface-variant text-center mb-10">
@@ -109,7 +109,7 @@ function ResultCard({
           </Text>
           <Text
             className="font-extrabold"
-            style={{ fontSize: 72, lineHeight: 80, color: tier.color }}
+            style={{ fontSize: 52, lineHeight: 60, color: tier.color }}
           >
             {accuracyPct}%
           </Text>

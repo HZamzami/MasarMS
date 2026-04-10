@@ -183,7 +183,7 @@ export default function ResultsOverallScreen() {
           <View className="w-16 h-16 rounded-full bg-tertiary-container/30 items-center justify-center mb-4">
             <Ionicons name="sparkles" size={32} color="#006b60" />
           </View>
-          <Text className="text-on-surface text-[42px] leading-[46px] font-bold text-center mb-3" style={textAlign}>
+          <Text className="text-on-surface text-2xl font-bold text-center mb-3" style={textAlign}>
             {messages.resultsOverall.heroTitle}
           </Text>
           <Text className="text-on-surface-variant text-base text-center px-4" style={textAlign}>
@@ -199,10 +199,10 @@ export default function ResultsOverallScreen() {
             {messages.resultsOverall.performanceScore}
           </Text>
           <View className="items-end mb-7" style={row}>
-            <Text className="text-[76px] leading-[76px] text-on-surface font-extrabold">
+            <Text style={{ fontSize: 52, lineHeight: 60, fontWeight: '800', color: '#2b3438' }}>
               {formatNumber(score)}
             </Text>
-            <Text className="text-2xl text-on-surface-variant font-bold mb-2" style={{ marginStart: 4 }}>
+            <Text className="text-xl text-on-surface-variant font-bold mb-2" style={{ marginStart: 4 }}>
               / 100
             </Text>
           </View>
@@ -222,7 +222,7 @@ export default function ResultsOverallScreen() {
           <Text className="text-on-surface-variant text-sm font-semibold mb-1" style={textAlign}>
             {messages.resultsOverall.trendComparison}
           </Text>
-          <Text className="text-on-surface text-2xl font-bold mb-4" style={textAlign}>
+          <Text className="text-on-surface text-xl font-bold mb-4" style={textAlign}>
             {trendText}
           </Text>
 
