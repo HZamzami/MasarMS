@@ -241,7 +241,7 @@ export default function MSIS29Screen() {
         className="items-center justify-between px-6 py-4"
         style={[row, { borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.25)' }]}
       >
-        <View className="items-center" style={row}>
+        <View className="items-center" style={[row, { gap: 12 }]}>
           <TouchableOpacity
             onPress={() => router.back()}
             hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
@@ -250,7 +250,7 @@ export default function MSIS29Screen() {
           >
             <Ionicons name={backIcon} size={24} color="#006880" />
           </TouchableOpacity>
-          <View style={{ marginStart: 12 }}>
+          <View>
             <Text className="font-bold text-lg text-on-surface" style={textAlign}>
               {messages.msis29.title}
             </Text>
@@ -320,14 +320,14 @@ export default function MSIS29Screen() {
               </View>
             ) : null}
 
-            <View className="items-center mb-4" style={row}>
-              <View className="w-8 h-8 rounded-xl bg-primary-container items-center justify-center" style={{ marginEnd: 8 }}>
+            <View className="items-center mb-4" style={[row, { gap: 8 }]}>
+              <View className="w-8 h-8 rounded-xl bg-primary-container items-center justify-center">
                 <Ionicons name="body-outline" size={16} color="#004a5d" />
               </View>
               <Text className="font-extrabold text-base text-on-surface" style={textAlign}>
                 {messages.msis29.physicalImpact}
               </Text>
-              <Text className="text-xs text-on-surface-variant" style={{ marginStart: 8 }}>
+              <Text className="text-xs text-on-surface-variant">
                 · {formatMessage(messages.msis29.itemsCount, { count: formatNumber(physicalItems.length) })}
               </Text>
             </View>
@@ -342,14 +342,14 @@ export default function MSIS29Screen() {
               />
             ))}
 
-            <View className="items-center mb-4 mt-6" style={row}>
-              <View className="w-8 h-8 rounded-xl bg-tertiary-container items-center justify-center" style={{ marginEnd: 8 }}>
+            <View className="items-center mb-4 mt-6" style={[row, { gap: 8 }]}>
+              <View className="w-8 h-8 rounded-xl bg-tertiary-container items-center justify-center">
                 <Ionicons name="heart-outline" size={16} color="#006b60" />
               </View>
               <Text className="font-extrabold text-base text-on-surface" style={textAlign}>
                 {messages.msis29.psychologicalImpact}
               </Text>
-              <Text className="text-xs text-on-surface-variant" style={{ marginStart: 8 }}>
+              <Text className="text-xs text-on-surface-variant">
                 · {formatMessage(messages.msis29.itemsCount, { count: formatNumber(psychologicalItems.length) })}
               </Text>
             </View>

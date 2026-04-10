@@ -243,10 +243,10 @@ export default function ProfileScreen() {
           <TouchableOpacity
             onPress={() => void supabase.auth.signOut()}
             className="w-full bg-surface-container-high py-4 rounded-2xl items-center justify-center mb-8"
-            style={row}
+            style={[row, { gap: 8 }]}
           >
             <Ionicons name="log-out-outline" size={20} color="#737c80" />
-            <Text className="text-on-surface-variant font-bold" style={{ marginStart: 8 }}>
+            <Text className="text-on-surface-variant font-bold">
               {messages.common.signOut}
             </Text>
           </TouchableOpacity>
@@ -254,12 +254,11 @@ export default function ProfileScreen() {
           <TouchableOpacity
             onPress={() => router.push('/database-testing')}
             className="items-center justify-center p-4 rounded-2xl border border-dashed border-outline-variant"
-            style={row}
+            style={[row, { gap: 8 }]}
           >
             <Ionicons name="server-outline" size={16} color="#aab3b8" />
             <Text
               className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest"
-              style={{ marginStart: 8 }}
             >
               {messages.profile.databaseTesting}
             </Text>

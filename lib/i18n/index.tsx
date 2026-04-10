@@ -24,8 +24,8 @@ type LocalizationContextValue = {
   screenDirection: { direction: 'rtl' | 'ltr' };
   textAlign: { textAlign: 'right' | 'left' };
   inputAlign: { textAlign: 'right' | 'left'; writingDirection: 'rtl' | 'ltr' };
-  row: { flexDirection: 'row-reverse' | 'row' };
-  rowReverse: { flexDirection: 'row' | 'row-reverse' };
+  row: { flexDirection: 'row' };
+  rowReverse: { flexDirection: 'row-reverse' };
   formatDate: (value: string | number | Date, options?: Intl.DateTimeFormatOptions) => string;
   formatTime: (value: string | number | Date, options?: Intl.DateTimeFormatOptions) => string;
   translateTestType: (value: string) => string;
@@ -123,8 +123,8 @@ export function LocalizationProvider({
     screenDirection: { direction: isRTL ? 'rtl' : 'ltr' },
     textAlign: { textAlign: isRTL ? 'right' : 'left' },
     inputAlign: { textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' },
-    row: { flexDirection: isRTL ? 'row-reverse' : 'row' },
-    rowReverse: { flexDirection: isRTL ? 'row' : 'row-reverse' },
+    row: { flexDirection: 'row' },
+    rowReverse: { flexDirection: 'row-reverse' },
     formatDate: (value, options) => new Date(value).toLocaleDateString(locale, options),
     formatTime: (value, options) => new Date(value).toLocaleTimeString(locale, options),
     translateTestType: (value) => messages.shared.testTypes[value as keyof typeof messages.shared.testTypes] ?? value,

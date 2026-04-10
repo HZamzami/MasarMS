@@ -62,6 +62,7 @@ function PhenotypeCard({
       }`}
       style={[
         row,
+        { gap: 16 },
         selected
           ? {
             shadowColor: '#006880',
@@ -77,16 +78,15 @@ function PhenotypeCard({
         className={`w-11 h-11 rounded-full items-center justify-center ${
           selected ? 'bg-primary' : 'bg-surface-container-highest'
         }`}
-        style={{ marginEnd: 16 }}
       >
         <Ionicons name={item.icon} size={22} color={selected ? '#f1faff' : '#576065'} />
       </View>
       <View className="flex-1">
-        <View className="items-center" style={row}>
+        <View className="items-center" style={[row, { gap: 8 }]}>
           <Text className="font-bold text-sm text-on-surface flex-1" style={textAlign}>
             {copy.label}
           </Text>
-          <View className="bg-surface-container px-2 py-0.5 rounded-full" style={{ marginStart: 8 }}>
+          <View className="bg-surface-container px-2 py-0.5 rounded-full">
             <Text className="text-xs font-bold text-on-surface-variant">{copy.shortLabel}</Text>
           </View>
         </View>
@@ -95,7 +95,7 @@ function PhenotypeCard({
         </Text>
       </View>
       {selected ? (
-        <Ionicons name="checkmark-circle" size={22} color="#006880" style={{ marginStart: 8 }} />
+        <Ionicons name="checkmark-circle" size={22} color="#006880" />
       ) : null}
     </TouchableOpacity>
   );
@@ -124,13 +124,12 @@ function EducationCard({
       className={`items-center px-4 py-3.5 rounded-2xl border-2 ${
         selected ? 'bg-surface-container-lowest border-primary' : 'bg-surface-container border-transparent'
       }`}
-      style={row}
+      style={[row, { gap: 12 }]}
     >
       <View
         className={`w-9 h-9 rounded-full items-center justify-center ${
           selected ? 'bg-primary' : 'bg-surface-container-highest'
         }`}
-        style={{ marginEnd: 12 }}
       >
         <Ionicons name={item.icon} size={18} color={selected ? '#f1faff' : '#576065'} />
       </View>
@@ -161,7 +160,7 @@ function InputField({
 
   return (
     <View>
-      <View className="items-center justify-between mb-2 ml-1" style={row}>
+      <View className="items-center justify-between mb-2 ms-1" style={row}>
         <Text className="text-sm font-semibold text-on-surface-variant" style={textAlign}>
           {label}
         </Text>
@@ -175,13 +174,12 @@ function InputField({
         className={`items-center bg-surface-container-highest rounded-xl px-4 py-3 border-2 ${
           error ? 'border-error' : focused ? 'border-primary' : 'border-transparent'
         }`}
-        style={row}
+        style={[row, { gap: 12 }]}
       >
         <Ionicons
           name={icon}
           size={20}
           color={error ? '#a83836' : '#737c80'}
-          style={{ marginEnd: 12 }}
         />
         <TextInput
           className="flex-1 text-on-surface font-semibold text-base"
@@ -194,9 +192,9 @@ function InputField({
         />
       </View>
       {error ? (
-        <Text className="mt-1.5 ml-1 text-xs text-error" style={textAlign}>{error}</Text>
+        <Text className="mt-1.5 ms-1 text-xs text-error" style={textAlign}>{error}</Text>
       ) : hint ? (
-        <Text className="mt-1.5 ml-1 text-xs text-on-surface-variant leading-5" style={textAlign}>{hint}</Text>
+        <Text className="mt-1.5 ms-1 text-xs text-on-surface-variant leading-5" style={textAlign}>{hint}</Text>
       ) : null}
     </View>
   );
@@ -385,8 +383,8 @@ export default function ProfileSetup() {
                 ))}
               </View>
 
-              <View className="mt-6 p-4 bg-surface-container rounded-2xl items-start" style={row}>
-                <Ionicons name="information-circle-outline" size={20} color="#506076" style={{ marginEnd: 12 }} />
+              <View className="mt-6 p-4 bg-surface-container rounded-2xl items-start" style={[row, { gap: 12 }]}>
+                <Ionicons name="information-circle-outline" size={20} color="#506076" />
                 <Text className="flex-1 text-xs text-on-surface-variant leading-5" style={textAlign}>
                   {messages.onboarding.phenotype.help}
                 </Text>

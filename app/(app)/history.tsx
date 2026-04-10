@@ -56,7 +56,7 @@ export default function HistoryScreen() {
     const date = new Date(item.created_at);
     return (
       <View className="flex-row items-center p-4 bg-surface-container-low rounded-2xl mb-3 border border-outline-variant/20" style={row}>
-        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center mr-4">
+        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-4">
           <Ionicons name="clipboard-outline" size={20} color="#006880" />
         </View>
         <View className="flex-1">

@@ -130,11 +130,10 @@ function TaskCard({ item, onPress }: { item: TestScheduleItem; onPress: () => vo
       className={`items-center p-4 rounded-2xl mb-3 ${
         isLocked ? 'bg-surface-container-lowest opacity-50' : 'bg-surface-container-low border border-outline-variant/30 shadow-sm'
       }`}
-      style={row}
+      style={[row, { gap: 16 }]}
     >
       <View
         className="w-12 h-12 bg-surface-container-lowest rounded-xl items-center justify-center"
-        style={{ marginEnd: 16 }}
       >
         {renderIcon()}
       </View>
@@ -228,8 +227,8 @@ function HealthStatusSection({ alerts }: { alerts: Record<string, 'none' | 'conc
         <Text className="text-sm font-black text-on-surface uppercase tracking-widest" style={textAlign}>
           {messages.home.biomarkerStatus}
         </Text>
-        <View className="items-center" style={row}>
-          <View className={`w-2 h-2 rounded-full ${statusColor}`} style={{ marginEnd: 6 }} />
+        <View className="items-center" style={[row, { gap: 6 }]}>
+          <View className={`w-2 h-2 rounded-full ${statusColor}`} />
           <Text className="text-[10px] font-bold text-on-surface-variant uppercase" style={textAlign}>
             {statusLabel}
           </Text>
@@ -362,13 +361,13 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View className="items-center" style={row}>
+          <View className="items-center" style={[row, { gap: 10 }]}>
             {dash.streak.currentStreak > 1 ? (
               <View
                 className="bg-tertiary-container px-3 py-1.5 rounded-full items-center"
-                style={[row, { marginEnd: 10 }]}
+                style={[row, { gap: 6 }]}
               >
-                <Text style={{ fontSize: 14, marginEnd: 6 }}>🔥</Text>
+                <Text style={{ fontSize: 14 }}>🔥</Text>
                 <Text className="text-xs font-black text-on-surface-variant">
                   {formatNumber(dash.streak.currentStreak)}
                 </Text>
@@ -431,10 +430,10 @@ export default function HomeScreen() {
               <TouchableOpacity
                 onPress={() => void supabase.auth.signOut()}
                 className="items-center justify-center py-4 rounded-2xl bg-surface-container-high"
-                style={row}
+                style={[row, { gap: 8 }]}
               >
                 <Ionicons name="log-out-outline" size={18} color="#737c80" />
-                <Text className="text-sm text-on-surface-variant font-bold" style={{ marginStart: 8 }}>
+                <Text className="text-sm text-on-surface-variant font-bold">
                   {messages.common.signOut}
                 </Text>
               </TouchableOpacity>

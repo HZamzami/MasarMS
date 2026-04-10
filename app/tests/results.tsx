@@ -70,8 +70,8 @@ export default function ResultsScreen() {
           </View>
         </View>
 
-        <View className="w-full bg-secondary-container rounded-2xl px-4 py-3 mb-8 items-start" style={row}>
-          <Ionicons name="information-circle-outline" size={18} color="#435368" style={{ marginEnd: 12, marginTop: 1 }} />
+        <View className="w-full bg-secondary-container rounded-2xl px-4 py-3 mb-8 items-start" style={[row, { gap: 12 }]}>
+          <Ionicons name="information-circle-outline" size={18} color="#435368" style={{ marginTop: 1 }} />
           <Text className="flex-1 text-xs text-on-secondary-container leading-5" style={textAlign}>
             {messages.results.baselineNote}
           </Text>
@@ -79,13 +79,13 @@ export default function ResultsScreen() {
 
         <TouchableOpacity
           className="w-full bg-primary rounded-2xl py-4 items-center justify-center"
-          style={row}
+          style={[row, { gap: 8 }]}
           onPress={() => router.replace('/')}
           accessibilityRole="button"
           accessibilityLabel={messages.results.backToHomeA11y}
         >
           <Ionicons name="home-outline" size={20} color="white" />
-          <Text className="text-on-primary font-bold text-base" style={{ marginStart: 8 }}>
+          <Text className="text-on-primary font-bold text-base">
             {messages.results.backToHome}
           </Text>
         </TouchableOpacity>

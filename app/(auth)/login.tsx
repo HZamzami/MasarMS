@@ -208,13 +208,13 @@ export default function LoginScreen() {
 
           {/* Email */}
           <View className="mb-4">
-            <Text className="text-sm font-semibold text-on-surface-variant mb-2 ml-1">
+            <Text className="text-sm font-semibold text-on-surface-variant mb-2 ms-1">
               {messages.auth.emailAddress}
             </Text>
             <View className="flex-row items-center bg-surface-container-highest rounded-2xl px-4 h-14" style={row}>
               <Ionicons name="mail-outline" size={20} color="#737c80" />
               <TextInput
-                className="flex-1 ml-3 text-base text-on-surface"
+                className="flex-1 ms-3 text-base text-on-surface"
                 style={inputAlign}
                 placeholder={messages.auth.emailPlaceholder}
                 placeholderTextColor="#aab3b8"
@@ -232,13 +232,13 @@ export default function LoginScreen() {
 
           {/* Password */}
           <View className="mb-6">
-            <Text className="text-sm font-semibold text-on-surface-variant mb-2 ml-1">
+            <Text className="text-sm font-semibold text-on-surface-variant mb-2 ms-1">
               {messages.auth.password}
             </Text>
             <View className="flex-row items-center bg-surface-container-highest rounded-2xl px-4 h-14" style={row}>
               <Ionicons name="lock-closed-outline" size={20} color="#737c80" />
               <TextInput
-                className="flex-1 ml-3 text-base text-on-surface"
+                className="flex-1 ms-3 text-base text-on-surface"
                 style={inputAlign}
                 placeholder={mode === 'signup' ? messages.auth.signupPasswordPlaceholder : messages.auth.loginPasswordPlaceholder}
                 placeholderTextColor="#aab3b8"

@@ -168,9 +168,9 @@ export default function ResultsOverallScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="items-center justify-between mb-10" style={row}>
-          <View className="items-center" style={row}>
+          <View className="items-center" style={[row, { gap: 10 }]}>
             <MaterialCommunityIcons name="brain" size={22} color="#006880" />
-            <Text className="text-primary text-xl font-extrabold tracking-tight" style={{ marginStart: 10 }}>
+            <Text className="text-primary text-xl font-extrabold tracking-tight">
               {messages.common.appName}
             </Text>
           </View>
@@ -198,18 +198,18 @@ export default function ResultsOverallScreen() {
           <Text className="text-primary text-xs font-bold tracking-[2px] uppercase mb-3">
             {messages.resultsOverall.performanceScore}
           </Text>
-          <View className="items-end mb-7" style={row}>
+          <View className="items-end mb-7" style={[row, { gap: 4 }]}>
             <Text style={{ fontSize: 52, lineHeight: 60, fontWeight: '800', color: '#2b3438' }}>
               {formatNumber(score)}
             </Text>
-            <Text className="text-xl text-on-surface-variant font-bold mb-2" style={{ marginStart: 4 }}>
+            <Text className="text-xl text-on-surface-variant font-bold mb-2">
               / 100
             </Text>
           </View>
 
           <View className="bg-surface-container-low rounded-2xl p-4">
-            <View className="items-center mb-2" style={row}>
-              <Ionicons name="trending-up" size={16} color="#006b60" style={{ marginEnd: 6 }} />
+            <View className="items-center mb-2" style={[row, { gap: 6 }]}>
+              <Ionicons name="trending-up" size={16} color="#006b60" />
               <Text className="text-tertiary font-bold">{trendBadge}</Text>
             </View>
             <Text className="text-on-surface-variant text-xs leading-5" style={textAlign}>
@@ -226,8 +226,8 @@ export default function ResultsOverallScreen() {
             {trendText}
           </Text>
 
-          <View className="bg-surface-container-lowest rounded-xl px-4 py-3 items-center" style={row}>
-            <View className="w-10 h-10 rounded-lg bg-tertiary/10 items-center justify-center" style={{ marginEnd: 10 }}>
+          <View className="bg-surface-container-lowest rounded-xl px-4 py-3 items-center" style={[row, { gap: 10 }]}>
+            <View className="w-10 h-10 rounded-lg bg-tertiary/10 items-center justify-center">
               <Ionicons name="flash" size={18} color="#006b60" />
             </View>
             <View>
@@ -300,26 +300,26 @@ export default function ResultsOverallScreen() {
           <View style={[row, { gap: 10 }]}>
             <TouchableOpacity
               className="flex-1 bg-primary rounded-2xl py-4 items-center justify-center"
-              style={row}
+              style={[row, { gap: 8 }]}
               onPress={() => router.replace('/')}
               accessibilityRole="button"
               accessibilityLabel={messages.resultsOverall.homeA11y}
             >
               <Ionicons name="home-outline" size={20} color="white" />
-              <Text className="text-on-primary font-bold text-base" style={{ marginStart: 8 }}>
+              <Text className="text-on-primary font-bold text-base">
                 {messages.common.home}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               className="flex-1 bg-primary rounded-2xl py-4 items-center justify-center"
-              style={row}
+              style={[row, { gap: 8 }]}
               onPress={() => router.replace('/tests/results_overall')}
               accessibilityRole="button"
               accessibilityLabel={messages.resultsOverall.resultsA11y}
             >
               <Ionicons name="bar-chart-outline" size={20} color="white" />
-              <Text className="text-on-primary font-bold text-base" style={{ marginStart: 8 }}>
+              <Text className="text-on-primary font-bold text-base">
                 {messages.common.results}
               </Text>
             </TouchableOpacity>
@@ -327,13 +327,13 @@ export default function ResultsOverallScreen() {
 
           <TouchableOpacity
             className="w-full border border-outline-variant rounded-2xl py-3 items-center justify-center mt-1"
-            style={row}
+            style={[row, { gap: 8 }]}
             onPress={() => void supabase.auth.signOut()}
             accessibilityRole="button"
             accessibilityLabel={messages.resultsOverall.signOutA11y}
           >
             <Ionicons name="log-out-outline" size={18} color="#576065" />
-            <Text className="text-on-surface-variant font-semibold text-sm" style={{ marginStart: 8 }}>
+            <Text className="text-on-surface-variant font-semibold text-sm">
               {messages.common.signOut}
             </Text>
           </TouchableOpacity>

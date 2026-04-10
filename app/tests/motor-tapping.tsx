@@ -153,7 +153,7 @@ export default function MotorTappingTaskScreen() {
               onPress={() => { setDominantHand(true); setTestMode('countdown'); }}
               className="w-full bg-surface-container-low border-2 border-primary/20 rounded-2xl p-5 flex-row items-center"
             >
-              <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mr-4">
+              <View className="w-10 h-10 rounded-full bg-primary items-center justify-center me-4">
                 <Ionicons name="star" size={20} color="#f1faff" />
               </View>
               <Text className="text-lg font-bold text-on-surface">{messages.common.dominantHand}</Text>
@@ -163,7 +163,7 @@ export default function MotorTappingTaskScreen() {
               onPress={() => { setDominantHand(false); setTestMode('countdown'); }}
               className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-2xl p-5 flex-row items-center"
             >
-              <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center mr-4">
+              <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center me-4">
                 <Ionicons name="hand-right-outline" size={20} color="#576065" />
               </View>
               <Text className="text-lg font-bold text-on-surface">{messages.common.nonDominantHand}</Text>

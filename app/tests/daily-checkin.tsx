@@ -153,6 +153,7 @@ export default function DailyCheckin() {
   const {
     backIcon,
     formatDate,
+    isRTL,
     messages,
     row,
     textAlign,
@@ -214,7 +215,7 @@ export default function DailyCheckin() {
           className="items-center justify-between px-6 py-4"
           style={[row, { borderBottomWidth: 1, borderBottomColor: 'rgba(170,179,184,0.3)' }]}
         >
-          <View className="items-center" style={row}>
+          <View className="items-center" style={[row, { gap: 16 }]}>
             <TouchableOpacity
               onPress={() => router.back()}
               hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
@@ -223,7 +224,7 @@ export default function DailyCheckin() {
             >
               <Ionicons name={backIcon} size={24} color="#006880" />
             </TouchableOpacity>
-            <Text className="font-bold text-lg text-on-surface" style={{ marginStart: 16 }}>
+            <Text className="font-bold text-lg text-on-surface">
               {messages.dailyCheckin.title}
             </Text>
           </View>
@@ -279,11 +280,11 @@ export default function DailyCheckin() {
               </View>
 
               <View className="bg-surface-container-low rounded-3xl p-6 mb-10">
-                <View className="items-center mb-6" style={row}>
+                <View className="items-center mb-6" style={[row, { gap: 12 }]}>
                   <View className="w-12 h-12 rounded-full bg-primary-container items-center justify-center">
                     <Ionicons name="flash" size={22} color="#004a5d" />
                   </View>
-                  <View className="flex-1" style={{ marginStart: 12 }}>
+                  <View className="flex-1">
                     <Text className="font-bold text-base text-on-surface" style={textAlign}>
                       {messages.dailyCheckin.energyTitle}
                     </Text>
@@ -321,8 +322,8 @@ export default function DailyCheckin() {
               </View>
 
               <View className="mb-6">
-                <View className="items-center mb-3" style={row}>
-                  <Ionicons name="create-outline" size={22} color="#006880" style={{ marginEnd: 8 }} />
+                <View className="items-center mb-3" style={[row, { gap: 8 }]}>
+                  <Ionicons name="create-outline" size={22} color="#006880" />
                   <Text className="font-bold text-base text-on-surface flex-1" style={textAlign}>
                     {messages.dailyCheckin.symptomsTitle}
                   </Text>
@@ -336,7 +337,7 @@ export default function DailyCheckin() {
                   numberOfLines={4}
                   textAlignVertical="top"
                   className="bg-surface-container-highest rounded-2xl p-5 text-on-surface"
-                  style={{ minHeight: 100, textAlign: Platform.OS === 'web' ? undefined : textAlign.textAlign, writingDirection: row.flexDirection === 'row-reverse' ? 'rtl' : 'ltr' }}
+                  style={{ minHeight: 100, textAlign: Platform.OS === 'web' ? undefined : textAlign.textAlign, writingDirection: isRTL ? 'rtl' : 'ltr' }}
                   accessibilityLabel={messages.dailyCheckin.symptomsA11y}
                 />
               </View>

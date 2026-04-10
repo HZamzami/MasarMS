@@ -355,7 +355,7 @@ export default function DatabaseTestingScreen() {
     <SafeAreaView className="flex-1 bg-surface">
       <LanguageToggleBar />
       <View className="px-6 pt-4 pb-3 items-center justify-between" style={row}>
-        <View className="items-center" style={row}>
+        <View className="items-center" style={[row, { gap: 10 }]}>
           <TouchableOpacity
             onPress={() => router.back()}
             hitSlop={20}
@@ -364,7 +364,7 @@ export default function DatabaseTestingScreen() {
           >
             <Ionicons name={backIcon} size={24} color="#006880" />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-primary" style={{ marginStart: 10 }}>
+          <Text className="text-xl font-bold text-primary">
             {messages.databaseTesting.title}
           </Text>
         </View>
