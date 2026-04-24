@@ -2,13 +2,16 @@
   "name": "sclerosis",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "homepage": "https://HZamzami.github.io/MasarMS",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "predeploy": "npx expo export --platform web",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -49,6 +52,7 @@
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "gh-pages": "^6.3.0",
     "typescript": "~5.9.2"
   },
   "private": true

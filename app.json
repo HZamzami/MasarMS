@@ -23,6 +23,7 @@
     },
     "web": {
       "output": "static",
+      "baseUrl": "/MasarMS",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
