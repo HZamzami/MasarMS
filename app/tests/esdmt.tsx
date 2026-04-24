@@ -259,7 +259,7 @@ export default function EsdmtScreen() {
       </ScrollView>
 
       {/* 3×3 keypad – pinned above safe area */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 20, gap: 12 }}>
+      <View style={{ direction: 'ltr', paddingHorizontal: 20, paddingBottom: 20, gap: 12 }}>
         {[[1, 2, 3], [4, 5, 6], [7, 8, 9]].map((nums, rowIdx) => (
           <View key={rowIdx} style={{ flexDirection: 'row', gap: 12 }}>
             {nums.map((n) => (

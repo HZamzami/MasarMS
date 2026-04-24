@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -44,15 +44,19 @@ function impactLabel(score: number, messages: ReturnType<typeof useLocalization>
 }
 
 function ResponseRow({
+  questionIndex,
   index,
   question,
   value,
   onChange,
+  onLayout,
 }: {
+  questionIndex: number;
   index: number;
   question: string;
   value: number | null;
   onChange: (value: number) => void;
+  onLayout?: (questionIndex: number, y: number) => void;
 }) {
   const { formatMessage, messages, row, textAlign } = useLocalization();
 
@@ -60,6 +64,7 @@ function ResponseRow({
     <View
       className="bg-surface-container rounded-2xl p-4 mb-3"
       style={value !== null ? { borderWidth: 1, borderColor: 'rgba(0,104,128,0.2)' } : undefined}
+      onLayout={(event) => onLayout?.(questionIndex, event.nativeEvent.layout.y)}
     >
       <Text className="text-sm font-semibold text-on-surface mb-3 leading-5" style={textAlign}>
         <Text className="text-primary font-bold">{index}. </Text>
@@ -179,6 +184,8 @@ type ScreenState = 'form' | 'saving' | 'error' | 'done';
 export default function MSIS29Screen() {
   const router = useRouter();
   const { backIcon, formatMessage, formatNumber, messages, row, textAlign } = useLocalization();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const rowOffsetsRef = useRef<Record<number, number>>({});
 
   const physicalItems = messages.msis29.physicalItems;
   const psychologicalItems = messages.msis29.psychologicalItems;
@@ -193,14 +200,43 @@ export default function MSIS29Screen() {
   const answeredCount = useMemo(() => responses.filter((value) => value !== null).length, [responses]);
   const allAnswered = answeredCount === totalItems;
 
+  const handleRowLayout = useCallback((questionIndex: number, y: number) => {
+    rowOffsetsRef.current[questionIndex] = y;
+  }, []);
+
+  const scrollToQuestion = useCallback((questionIndex: number) => {
+    if (questionIndex >= totalItems) {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+      return;
+    }
+
+    const targetY = rowOffsetsRef.current[questionIndex];
+    if (typeof targetY !== 'number') return;
+
+    scrollViewRef.current?.scrollTo({
+      x: 0,
+      y: Math.max(0, targetY - 24),
+      animated: true,
+    });
+  }, [totalItems]);
+
   const setResponse = useCallback((index: number, value: number) => {
+    let shouldAdvance = false;
+
     setResponses((prev) => {
+      shouldAdvance = prev[index] === null;
       const next = [...prev];
       next[index] = value;
       return next;
     });
     setValidationError(false);
-  }, []);
+
+    if (shouldAdvance) {
+      requestAnimationFrame(() => {
+        scrollToQuestion(index + 1);
+      });
+    }
+  }, [scrollToQuestion]);
 
   async function handleSubmit() {
     if (!allAnswered) {
@@ -295,6 +331,7 @@ export default function MSIS29Screen() {
       {screenState === 'form' ? (
         <>
           <ScrollView
+            ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 120 }}
           >
@@ -335,10 +372,12 @@ export default function MSIS29Screen() {
             {physicalItems.map((question, index) => (
               <ResponseRow
                 key={`physical-${index}`}
+                questionIndex={index}
                 index={index + 1}
                 question={question}
                 value={responses[index]}
                 onChange={(value) => setResponse(index, value)}
+                onLayout={handleRowLayout}
               />
             ))}
 
@@ -359,10 +398,12 @@ export default function MSIS29Screen() {
               return (
                 <ResponseRow
                   key={`psychological-${responseIndex}`}
+                  questionIndex={responseIndex}
                   index={responseIndex + 1}
                   question={question}
                   value={responses[responseIndex]}
                   onChange={(value) => setResponse(responseIndex, value)}
+                  onLayout={handleRowLayout}
                 />
               );
             })}
