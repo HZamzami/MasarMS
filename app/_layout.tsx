@@ -1,7 +1,7 @@
 import '../global.css';
 
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Slot, useRouter } from 'expo-router';
@@ -29,7 +29,7 @@ async function resolveRoute(session: Session): Promise<'/' | '/onboarding/profil
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
   const [initialLanguage, setInitialLanguage] = useState<'en' | 'ar'>('ar');
-  const routeRef = useRef<'/' | '/onboarding/profile' | '/(auth)/welcome'>('/(auth)/welcome');
+  const routeRef = useRef<string>('/(auth)/welcome');
   const router = useRouter();
 
   useEffect(() => {
@@ -47,7 +47,8 @@ export default function RootLayout() {
       ]);
 
       if (session) {
-        routeRef.current = await resolveRoute(session);
+        const route = await resolveRoute(session);
+        routeRef.current = route;
       } else {
         routeRef.current = '/(auth)/welcome';
       }
@@ -64,15 +65,13 @@ export default function RootLayout() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session: Session | null) => {
       if (event === 'SIGNED_OUT' || !session) {
-        router.replace('/(auth)/welcome');
+        router.replace('/(auth)/welcome' as any);
         return;
       }
 
       if (event === 'SIGNED_IN') {
-        // Always re-check phenotype so new users land on onboarding,
-        // returning users land on the dashboard.
         const route = await resolveRoute(session);
-        router.replace(route);
+        router.replace(route as any);
       }
     });
 
@@ -85,17 +84,30 @@ export default function RootLayout() {
   useEffect(() => {
     if (!ready) return;
     SplashScreen.hideAsync();
-    router.replace(routeRef.current);
+    router.replace(routeRef.current as any);
   }, [ready, router]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <LocalizationProvider initialLanguage={initialLanguage}>
         <SafeAreaProvider>
-          <LocalizedSlot />
+          <WebFrame>
+            <LocalizedSlot />
+          </WebFrame>
         </SafeAreaProvider>
       </LocalizationProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function WebFrame({ children }: { children: React.ReactNode }) {
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return (
+    <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#dbe4e9' }}>
+      <View style={{ flex: 1, width: '100%', maxWidth: 480, overflow: 'hidden' }}>
+        {children}
+      </View>
+    </View>
   );
 }
 
